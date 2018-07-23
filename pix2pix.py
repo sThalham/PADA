@@ -16,6 +16,9 @@ from data_loader import DataLoader
 import numpy as np
 import os
 
+# matplotlib diarrheas otherwise
+matplotlib.use('Agg')
+
 class Pix2Pix():
     def __init__(self):
         # Input shape
