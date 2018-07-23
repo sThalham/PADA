@@ -10,6 +10,7 @@ from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
 import datetime
+import matplotlib
 import matplotlib.pyplot as plt
 import sys
 from data_loader import DataLoader
