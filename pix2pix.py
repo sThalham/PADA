@@ -191,7 +191,8 @@ class Pix2Pix():
                 if batch_i % sample_interval == 0:          # matplotlib error
                     self.sample_images(epoch, batch_i)
 
-                if epoch %
+                #if epoch % 10 == 0:
+                    
 
 
     #def test(batch_size)      
