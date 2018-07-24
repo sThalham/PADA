@@ -192,7 +192,7 @@ class Pix2Pix():
                     self.sample_images(epoch, batch_i)
 
                 #if epoch % 10 == 0:
-                    
+                #    self.combined.save_model(
 
 
     #def test(batch_size)      
@@ -205,16 +205,16 @@ class Pix2Pix():
         imgs_A, imgs_B = self.data_loader.load_data(batch_size, is_testing=True)
         fake_A = self.generator.predict(imgs_B)
 
-        gen_imgs = np.concatenate([imgs_B, fake_A, imgs_A])
+        gen_imgs = fake_A
 
         # Rescale images 0 - 255
         gen_imgs = 127.5 * gen_imgs + 127.5
 
         # titles = ['Condition', 'Generated', 'Original']
         for i in range(batch_size):
-            fn = ("images/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
+            fn = ("images/%s/%d_%d_%i.png" % (self.dataset_name, epoch, batch_i, i))
             cv2.imwrite(fn, gen_imgs[i])
-        print('sample generated!')
+        print('samples generated!')
 
 
 if __name__ == '__main__':
