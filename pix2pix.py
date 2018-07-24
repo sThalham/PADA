@@ -192,7 +192,7 @@ class Pix2Pix():
                 # If at save interval => save generated image samples
                 if batch_i % sample_interval == 0:          # matplotlib error
                     self.sample_images(epoch, batch_i)
-    def test      
+    #def test(batch_size)      
 
     def sample_images(self, epoch, batch_i):
         os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
@@ -217,4 +217,5 @@ class Pix2Pix():
 if __name__ == '__main__':
     gan = Pix2Pix()
     gan.train(epochs=200, batch_size=10, sample_interval=200)
+    #gan.test(batch_size=10)
 
