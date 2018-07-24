@@ -195,7 +195,7 @@ class Pix2Pix():
             #    self.combined.save_model(
 
 
-    def test(batch_size=1):
+    def test(self, batch_size=1):
         files = glob('./datasets/%s/%s/*' % (self.dataset_name, "test"))
         lenFolder = len("datasets/" + self.dataset_name + "/test/")        
         
