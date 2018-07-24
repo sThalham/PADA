@@ -189,7 +189,7 @@ class Pix2Pix():
                                                                         elapsed_time))
 
             # Save samples once every epoch
-            self.sample_images(epoch, batch_i)
+            self.sample_images(epoch)
 
             #if epoch % 10 == 0:
             #    self.combined.save_model(
