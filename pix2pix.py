@@ -198,12 +198,13 @@ class Pix2Pix():
     def test(self, batch_size=1):
         files = glob('./datasets/%s/%s/*' % (self.dataset_name, "test"))
         lenFolder = len("datasets/" + self.dataset_name + "/test/")        
-        
+        amoFiles = len(files)        
+
         apro = 0
         ppro = batch_size
-        while (ppro) < files.size:
-            if (ppro) >= files.size:
-                ppro = apro + (files.size - apro)
+        while (ppro) < amoFiles:
+            if (ppro) >= amoFiles:
+                ppro = apro + (amoFiles - apro)
 
             paths = files[apro:ppro]
             imgs = self.data_loader.load_test_data(paths)
@@ -217,10 +218,11 @@ class Pix2Pix():
                 fn = fn[lenFolder:]
                 fn = "results/" + fn
                 cv2.imwrite(fn, gen_imgs[i])
-            print ("processed [%d:%d] of [%d]" % (apro, ppro, files.size))
+            print ("processed [%d:%d] of [%d]" % (apro, ppro, amoFiles))
             apro = apro + batch_size
             ppro = ppro + batch_size
         print("generated images under results")   
+
 
     def sample_images(self, epoch):
         os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
