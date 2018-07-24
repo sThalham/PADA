@@ -16,8 +16,6 @@ import numpy as np
 import os
 import cv2
 
-# matplotlib diarrheas otherwise
-matplotlib.use('Agg')
 
 class Pix2Pix():
     def __init__(self):
