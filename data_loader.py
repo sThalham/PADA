@@ -39,6 +39,18 @@ class DataLoader():
 
         return imgs_A, imgs_B
 
+    def load_test_data(self, paths):
+        imgs = []
+        for path in paths:
+            img = self.imread(path)
+
+            img = scipy.misc.imresize(img_A, self.img_res)
+            imgs.append(img_A)
+
+        imgs = np.array(imgs_A)/127.5 - 1.
+
+        return imgs
+
     def load_batch(self, batch_size=1, is_testing=False):
         data_type = "train" if not is_testing else "val"
         path = glob('./datasets/%s/%s/*' % (self.dataset_name, data_type))

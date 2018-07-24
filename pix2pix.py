@@ -15,6 +15,7 @@ from data_loader import DataLoader
 import numpy as np
 import os
 import cv2
+from glob import glob
 
 
 class Pix2Pix():
@@ -187,17 +188,41 @@ class Pix2Pix():
                                                                         g_loss[0],
                                                                         elapsed_time))
 
-                # If at save interval => save generated image samples
-                if batch_i % sample_interval == 0:          # matplotlib error
-                    self.sample_images(epoch, batch_i)
+            # Save samples once every epoch
+            self.sample_images(epoch, batch_i)
 
-                #if epoch % 10 == 0:
-                #    self.combined.save_model(
+            #if epoch % 10 == 0:
+            #    self.combined.save_model(
 
 
-    #def test(batch_size)      
+    def test(batch_size=1):
+        files = glob('./datasets/%s/%s/*' % (self.dataset_name, "test"))
+        lenFolder = len("datasets/" + self.dataset_name + "/test/")        
+        
+        apro = 0
+        ppro = batch_size
+        while (ppro) < files.size:
+            if (ppro) >= files.size:
+                ppro = apro + (files.size - apro)
 
-    def sample_images(self, epoch, batch_i):
+            paths = files[apro:ppro]
+            imgs = self.data_loader.load_test_data(paths)
+ 
+            fakes = self.generator.predict(imgs)
+            # Rescale images 0 - 255
+            fakes = 127.5 * fakes + 127.5
+
+            for i in range(batch_size):
+                fn = (paths[i]))
+                fn = fn[lenFolder:]
+                fn = "results/" + fn
+                cv2.imwrite(fn, gen_imgs[i])
+            print ("processed [%d:%d] of [%d]" % (apro, ppro, files.size))
+            apro = apro + batch_size
+            ppro = ppro + batch_size
+        print("generated images under results")   
+
+    def sample_images(self, epoch):
         os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
         r, c = 3, 3
         batch_size = 3
@@ -212,13 +237,13 @@ class Pix2Pix():
 
         # titles = ['Condition', 'Generated', 'Original']
         for i in range(batch_size):
-            fn = ("images/%s/%d_%d_%i.png" % (self.dataset_name, epoch, batch_i, i))
+            fn = ("images/%s/%d_%d.png" % (self.dataset_name, epoch, i))
             cv2.imwrite(fn, gen_imgs[i])
         print('samples generated!')
 
 
 if __name__ == '__main__':
     gan = Pix2Pix()
-    gan.train(epochs=50, batch_size=10, sample_interval=100)
-    #gan.test(batch_size=10)
+    gan.train(epochs=1, batch_size=10, sample_interval=1)
+    gan.test(batch_size=10)
 
