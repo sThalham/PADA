@@ -213,7 +213,7 @@ class Pix2Pix():
             fakes = 127.5 * fakes + 127.5
 
             for i in range(batch_size):
-                fn = (paths[i]))
+                fn = paths[i]
                 fn = fn[lenFolder:]
                 fn = "results/" + fn
                 cv2.imwrite(fn, gen_imgs[i])
