@@ -10,12 +10,11 @@ from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
 import datetime
-import matplotlib
-import matplotlib.pyplot as plt
 import sys
 from data_loader import DataLoader
 import numpy as np
 import os
+import cv2
 
 # matplotlib diarrheas otherwise
 matplotlib.use('Agg')
@@ -191,34 +190,29 @@ class Pix2Pix():
                                                                         elapsed_time))
 
                 # If at save interval => save generated image samples
-                #if batch_i % sample_interval == 0:          # matplotlib error
-                #    self.sample_images(epoch, batch_i)      
+                if batch_i % sample_interval == 0:          # matplotlib error
+                    self.sample_images(epoch, batch_i)      
 
     def sample_images(self, epoch, batch_i):
         os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
         r, c = 3, 3
+        batch_size = 3
 
-        imgs_A, imgs_B = self.data_loader.load_data(batch_size=3, is_testing=True)
+        imgs_A, imgs_B = self.data_loader.load_data(batch_size, is_testing=True)
         fake_A = self.generator.predict(imgs_B)
 
         gen_imgs = np.concatenate([imgs_B, fake_A, imgs_A])
 
-        # Rescale images 0 - 1
-        gen_imgs = 0.5 * gen_imgs + 0.5
+        # Rescale images 0 - 255
+        gen_imgs = 127.5 * gen_imgs + 127.5
 
-        titles = ['Condition', 'Generated', 'Original']
-        fig, axs = plt.subplots(r, c)
-        cnt = 0
-        for i in range(r):
-            for j in range(c):
-                axs[i,j].imshow(gen_imgs[cnt])
-                axs[i, j].set_title(titles[i])
-                axs[i,j].axis('off')
-                cnt += 1
-        fig.savefig("images/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
-        plt.close()
+        # titles = ['Condition', 'Generated', 'Original']
+        for i in range(batch_size):
+            fn = ("images/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
+            cv2.imwrite(fn, gen_imgs[i])
 
 
 if __name__ == '__main__':
     gan = Pix2Pix()
     gan.train(epochs=200, batch_size=1, sample_interval=200)
+    gan.test(
