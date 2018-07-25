@@ -194,8 +194,8 @@ class Pix2Pix():
             self.sample_images(epoch)
 
             #if epoch % 10 == 0:
-            #     fp = 'saved_model/' + self.dataset_name + '/model_' str(epoch) + '.hdf5'
-            #     self.save_weights(self.combined, fp)
+            fp = 'saved_model/' + self.dataset_name + '/model_' str(epoch) + '.hdf5'
+            self.save_weights(self.combined, fp)
 
 
     def test(self, batch_size=1):
