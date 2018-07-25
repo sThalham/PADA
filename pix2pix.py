@@ -219,7 +219,6 @@ class Pix2Pix():
             if (ppro) >= amoFiles:
                 ppro = apro + (amoFiles - apro)
 
-            print("Loading batch")
             paths = files[apro:ppro]
             print(paths)
             imgs = self.data_loader.load_test_data(paths)

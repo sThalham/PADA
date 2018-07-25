@@ -42,13 +42,15 @@ class DataLoader():
     def load_test_data(self, paths):
         imgs = []
         for path in paths:
+            print(path)
             img = self.imread(path)
-
+            print("img loaded")
             img = scipy.misc.imresize(img, self.img_res)
+            print("image resized")
             imgs.append(imgs)
-
+            print("imgs appended")
         imgs = np.array(imgs)/127.5 - 1.
-
+        print("imgs centered")
         return imgs
 
     def load_batch(self, batch_size=1, is_testing=False):
