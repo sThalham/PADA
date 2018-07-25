@@ -78,7 +78,7 @@ class Pix2Pix():
                               loss_weights=[1, 100],
                               optimizer=optimizer)
         # to rid useless error
-        self.discriminator.compile(optimizer)
+        #self.discriminator.compile(optimizer)
 
     def build_generator(self):
         """U-Net Generator"""
