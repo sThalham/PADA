@@ -50,7 +50,7 @@ class DataLoader():
             imgs.append(imgs)
             print("imgs appended")
         print(len(imgs))
-        imgs = np.asarray(imgs, dtype=np.float64)/127.5 - 1.
+        #imgs = np.asarray(imgs, dtype=np.float64)/127.5 - 1.
         print("imgs centered")
         return imgs
 
