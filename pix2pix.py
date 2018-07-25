@@ -159,7 +159,7 @@ class Pix2Pix():
         model_file = Path(self.model_name)
         if model_file.is_file():
             print("MODEL EXISTS... skip training. Please delete model file to retrain")
-            self.combined = load_model(self.model_name)
+            self.combined.load_weights(self.model_name)
             return
 
         start_time = datetime.datetime.now()
@@ -203,7 +203,7 @@ class Pix2Pix():
 
             #if epoch % 10 == 0:
             
-        self.save_weights(self.combined, self.model_name)
+        self.save_model_weights(self.combined, self.model_name)	
         print("Training finished!")
 
 
@@ -221,6 +221,7 @@ class Pix2Pix():
 
             print("Loading batch")
             paths = files[apro:ppro]
+            print(paths)
             imgs = self.data_loader.load_test_data(paths)
             print("Test batch [%d:%d] of [%d] loaded" % (apro, ppro, amoFiles))
  
@@ -262,12 +263,12 @@ class Pix2Pix():
             cv2.imwrite(fn, gen_imgs[i])
         print('samples generated!')
 
-    def save_weights(self, model, filepath, overwrite=True):
+    def save_model_weights(self, model, filepath, overwrite=True):
         model_file = Path(self.model_name)
         if model_file.is_file():
-            model.save(filepath, overwrite=True)
+            model.save_weights(filepath, overwrite=True)
         else:
-            model.save(filepath, overwrite=False)
+            model.save_weights(filepath, overwrite=False)
 
 
 if __name__ == '__main__':
