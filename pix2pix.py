@@ -203,13 +203,15 @@ class Pix2Pix():
 
             #if epoch % 10 == 0:
             
-            self.save_weights(self.combined, self.model_name)
+        self.save_weights(self.combined, self.model_name)
+        print("Training finished!")
 
 
     def test(self, batch_size=1):
         files = glob('./datasets/%s/%s/*' % (self.dataset_name, "test"))
         lenFolder = len("datasets/" + self.dataset_name + "/test/")        
-        amoFiles = len(files)        
+        amoFiles = len(files)   
+        print("found ", amoFiles, " to process")     
 
         apro = 0
         ppro = batch_size
@@ -217,6 +219,7 @@ class Pix2Pix():
             if (ppro) >= amoFiles:
                 ppro = apro + (amoFiles - apro)
 
+            print("Loading batch")
             paths = files[apro:ppro]
             imgs = self.data_loader.load_test_data(paths)
             print("Test batch [%d:%d] of [%d] loaded" % (apro, ppro, amoFiles))
