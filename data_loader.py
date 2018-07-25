@@ -45,9 +45,9 @@ class DataLoader():
             img = self.imread(path)
 
             img = scipy.misc.imresize(img, self.img_res)
-            imgs.append(img_A)
+            imgs.append(imgs)
 
-        imgs = np.array(imgs_A)/127.5 - 1.
+        imgs = np.array(imgs)/127.5 - 1.
 
         return imgs
 
