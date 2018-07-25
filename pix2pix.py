@@ -241,11 +241,12 @@ class Pix2Pix():
         imgs_B = 127.5 * imgs_B + 127.5
         fake_A = 127.5 * fake_A + 127.5
 
+        gen_imgs = np.concatenate([imgs_B, fake_A, imgs_A])
+
         # titles = ['Condition', 'Generated', 'Original']
         for i in range(batch_size):
             fn = ("images/%s/%d_%d.png" % (self.dataset_name, epoch, i))
-            img = combined_imgs = Concatenate(axis=-1)([imgs_A[i], fake_A[i]])
-            cv2.imwrite(fn, img[i])
+            cv2.imwrite(fn, gen_imgs[i])
         print('samples generated!')
 
     def save_weights(self, model, filepath, overwrite=True): 
