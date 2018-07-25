@@ -233,8 +233,8 @@ class Pix2Pix():
                 fn = paths[i]
                 fn = fn[lenFolder:]
                 fn = "results/" + fn
-                img = scipy.misc.imresize(gen_imgs[i], (480, 640))
-                cv2.imwrite(fn, gen_imgs[i])
+                img = scipy.misc.imresize(fakes[i], (480, 640))
+                cv2.imwrite(fn, img)
             print("processed [%d:%d] of [%d]" % (apro, ppro, amoFiles))
             apro = apro + batch_size
             ppro = ppro + batch_size
