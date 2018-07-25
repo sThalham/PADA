@@ -69,7 +69,7 @@ class Pix2Pix():
 
         # For the combined model we will only train the generator
         self.discriminator.trainable = False
-        self.discriminator.compile()
+        self.discriminator.compile(optimizer)
 
         # Discriminators determines validity of translated images / condition pairs
         valid = self.discriminator([fake_A, img_B])
