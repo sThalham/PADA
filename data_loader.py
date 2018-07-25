@@ -49,6 +49,7 @@ class DataLoader():
             print("image resized")
             imgs.append(imgs)
             print("imgs appended")
+        print(len(imgs))
         imgs = np.array(imgs)/127.5 - 1.
         print("imgs centered")
         return imgs
