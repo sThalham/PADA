@@ -7,7 +7,7 @@ from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
-from keras.models import Sequential, Model
+from keras.models import Sequential, Model, load_model
 from keras.optimizers import Adam
 import datetime
 import sys
@@ -30,6 +30,7 @@ class Pix2Pix():
         self.dataset_name = 'process2k'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
+        self.model_name = 'saved_model/' + self.dataset_name + '/model.h5'
 
 
         # Calculate output shape of D (PatchGAN)
@@ -154,6 +155,11 @@ class Pix2Pix():
 
     def train(self, epochs, batch_size=1, sample_interval=50):
 
+        if self.model_name.exists():
+            print("MODEL EXISTS... skip training. Please delete model file to retrain")
+            self.combined = load_model(self.model_name)
+            return
+
         start_time = datetime.datetime.now()
 
         # Adversarial loss ground truths
@@ -194,8 +200,8 @@ class Pix2Pix():
             self.sample_images(epoch)
 
             #if epoch % 10 == 0:
-            fp = 'saved_model/' + self.dataset_name + '/model.h5'
-            self.save_weights(self.combined, fp)
+            
+            self.save_weights(self.combined, self.model_name)
 
 
     def test(self, batch_size=1):
@@ -252,7 +258,7 @@ class Pix2Pix():
         print('samples generated!')
 
     def save_weights(self, model, filepath, overwrite=True): 
-        model.save_model(filepath)
+        model.save(filepath)
 
 
 if __name__ == '__main__':
