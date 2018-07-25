@@ -242,7 +242,7 @@ class Pix2Pix():
         # titles = ['Condition', 'Generated', 'Original']
         for i in range(batch_size):
             fn = ("images/%s/%d_%d.png" % (self.dataset_name, epoch, i))
-            img = combined_imgs = Concatenate(axis=-1)([imgs_A[i], fake_A[i], imgs_B[i])
+            img = combined_imgs = Concatenate(axis=-1)(imgs_A[i], fake_A[i], imgs_B[i])
             cv2.imwrite(fn, img[i])
         print('samples generated!')
 
