@@ -31,7 +31,7 @@ class Pix2Pix():
         self.dataset_name = 'process2k'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
-        self.model_name = 'saved_model/' + self.dataset_name + '/model.h5'
+        self.model_name = 'saved_model/' + self.dataset_name + '_model.h5'
 
 
         # Calculate output shape of D (PatchGAN)
@@ -259,8 +259,12 @@ class Pix2Pix():
             cv2.imwrite(fn, gen_imgs[i])
         print('samples generated!')
 
-    def save_weights(self, model, filepath, overwrite=True): 
-        model.save(filepath)
+    def save_weights(self, model, filepath, overwrite=True):
+        model_file = Path(self.model_name)
+        if model_file.is_file():
+            model.save(filepath, overwrite=True)
+        else:
+            model.save(filepath, overwrite=False)
 
 
 if __name__ == '__main__':
