@@ -69,7 +69,6 @@ class Pix2Pix():
 
         # For the combined model we will only train the generator
         self.discriminator.trainable = False
-        self.discriminator.compile(optimizer)
 
         # Discriminators determines validity of translated images / condition pairs
         valid = self.discriminator([fake_A, img_B])
@@ -78,6 +77,8 @@ class Pix2Pix():
         self.combined.compile(loss=['mse', 'mae'],
                               loss_weights=[1, 100],
                               optimizer=optimizer)
+        # to rid useless error
+        self.discriminator.compile(optimizer)
 
     def build_generator(self):
         """U-Net Generator"""
