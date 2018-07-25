@@ -12,6 +12,7 @@ from keras.optimizers import Adam
 import datetime
 import sys
 from data_loader import DataLoader
+from pathlib import Path
 import numpy as np
 import os
 import cv2
@@ -155,7 +156,8 @@ class Pix2Pix():
 
     def train(self, epochs, batch_size=1, sample_interval=50):
 
-        if self.model_name.exists():
+		model_file = Path(self.model_name)
+        if model_file.is_file():
             print("MODEL EXISTS... skip training. Please delete model file to retrain")
             self.combined = load_model(self.model_name)
             return
