@@ -194,7 +194,7 @@ class Pix2Pix():
             self.sample_images(epoch)
 
             #if epoch % 10 == 0:
-            fp = 'saved_model/' + self.dataset_name + '/model.hdf5'
+            fp = 'saved_model/' + self.dataset_name + '/model.h5'
             self.save_weights(self.combined, fp)
 
 
@@ -252,7 +252,7 @@ class Pix2Pix():
         print('samples generated!')
 
     def save_weights(self, model, filepath, overwrite=True): 
-        Model.save_model(model, filepath)
+        model.save_model(filepath)
 
 
 if __name__ == '__main__':
