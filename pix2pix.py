@@ -209,7 +209,7 @@ class Pix2Pix():
 
     def test(self, batch_size=1):
         files = glob('./datasets/%s/%s/*' % (self.dataset_name, "test"))
-        lenFolder = len("datasets/" + self.dataset_name + "/test/")        
+        lenFolder = len("./datasets/" + self.dataset_name + "/test/")        
         amoFiles = len(files)   
         print("found ", amoFiles, " to process")     
 
@@ -229,7 +229,7 @@ class Pix2Pix():
             for i in range(batch_size):
                 fn = paths[i]
                 fn = fn[lenFolder:]
-                fn = "results/" + fn
+                fn = "./results/" + fn
                 print(fn)
                 img = scipy.misc.imresize(fakes[i], (480, 640))
                 cv2.imwrite(fn, img)
