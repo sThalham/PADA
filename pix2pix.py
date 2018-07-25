@@ -252,7 +252,7 @@ class Pix2Pix():
         print('samples generated!')
 
     def save_weights(self, model, filepath, overwrite=True): 
-        keras.models.Models.save_model(model, filepath)
+        Model.save_model(model, filepath)
 
 
 if __name__ == '__main__':
