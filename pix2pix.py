@@ -69,6 +69,7 @@ class Pix2Pix():
 
         # For the combined model we will only train the generator
         self.discriminator.trainable = False
+        self.discriminator.compile()
 
         # Discriminators determines validity of translated images / condition pairs
         valid = self.discriminator([fake_A, img_B])
@@ -242,7 +243,7 @@ class Pix2Pix():
         # titles = ['Condition', 'Generated', 'Original']
         for i in range(batch_size):
             fn = ("images/%s/%d_%d.png" % (self.dataset_name, epoch, i))
-            img = combined_imgs = Concatenate(axis=-1)(imgs_A[i], fake_A[i], imgs_B[i])
+            img = combined_imgs = Concatenate(axis=-1)(imgs_A[i], fake_A[i])
             cv2.imwrite(fn, img[i])
         print('samples generated!')
 
