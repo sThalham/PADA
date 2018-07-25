@@ -220,19 +220,17 @@ class Pix2Pix():
                 ppro = apro + (amoFiles - apro)
 
             paths = files[apro:ppro]
-            print(paths)
             imgs = self.data_loader.load_test_data(paths)
             print("Test batch [%d:%d] of [%d] loaded" % (apro, ppro, amoFiles))
  
             fakes = self.generator.predict(imgs)
-            print("fake ones generated")
-            # Rescale images 0 - 255
             fakes = 127.5 * fakes + 127.5
 
             for i in range(batch_size):
                 fn = paths[i]
                 fn = fn[lenFolder:]
                 fn = "results/" + fn
+                print(fn)
                 img = scipy.misc.imresize(fakes[i], (480, 640))
                 cv2.imwrite(fn, img)
             print("processed [%d:%d] of [%d]" % (apro, ppro, amoFiles))
@@ -273,5 +271,5 @@ class Pix2Pix():
 if __name__ == '__main__':
     gan = Pix2Pix()
     gan.train(epochs=1, batch_size=10, sample_interval=1)
-    gan.test(batch_size=5)
+    gan.test(batch_size=10)
 
