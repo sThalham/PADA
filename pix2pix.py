@@ -27,7 +27,7 @@ class Pix2Pix():
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
-        self.dataset_name = 'linemodRendered'
+        self.dataset_name = 'process2k'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
 
@@ -192,7 +192,8 @@ class Pix2Pix():
             self.sample_images(epoch)
 
             #if epoch % 10 == 0:
-            #    self.combined.save_model(
+            #     fp = 'saved_model/' + self.dataset_name + '/model_' str(epoch) + '.hdf5'
+            #     self.save_weights(self.combined, fp)
 
 
     def test(self, batch_size=1):
@@ -217,11 +218,12 @@ class Pix2Pix():
                 fn = paths[i]
                 fn = fn[lenFolder:]
                 fn = "results/" + fn
+                img = scipy.misc.imresize(gen_imgs[i], (480, 640))
                 cv2.imwrite(fn, gen_imgs[i])
             print ("processed [%d:%d] of [%d]" % (apro, ppro, amoFiles))
             apro = apro + batch_size
             ppro = ppro + batch_size
-        print("generated images under results")   
+        print("generated images under /results")   
 
 
     def sample_images(self, epoch):
@@ -232,16 +234,20 @@ class Pix2Pix():
         imgs_A, imgs_B = self.data_loader.load_data(batch_size, is_testing=True)
         fake_A = self.generator.predict(imgs_B)
 
-        gen_imgs = fake_A
-
         # Rescale images 0 - 255
-        gen_imgs = 127.5 * gen_imgs + 127.5
+        imgs_A = 127.5 * imgs_A + 127.5
+        imgs_B = 127.5 * imgs_B + 127.5
+        fake_A = 127.5 * fake_A + 127.5
 
         # titles = ['Condition', 'Generated', 'Original']
         for i in range(batch_size):
             fn = ("images/%s/%d_%d.png" % (self.dataset_name, epoch, i))
-            cv2.imwrite(fn, gen_imgs[i])
+            img = combined_imgs = Concatenate(axis=-1)([imgs_A[i], fake_A[i] imgs_B[i]])
+            cv2.imwrite(fn, img[i])
         print('samples generated!')
+
+    def save_weights(self, model, filepath, overwrite=True): 
+        keras.models.Models.save_model(model, filepath)
 
 
 if __name__ == '__main__':
