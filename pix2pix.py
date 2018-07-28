@@ -28,7 +28,7 @@ class Pix2Pix():
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
-        self.dataset_name = 'process2k'
+        self.dataset_name = 'p2p_train_10k'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
         self.model_name = 'saved_model/' + self.dataset_name + '_model.h5'
