@@ -79,6 +79,7 @@ class Pix2Pix():
         self.combined.compile(loss=['mse', 'mae'],
                               loss_weights=[1, 100],
                               optimizer=optimizer)
+  
         # to rid useless error
         #self.discriminator.compile(optimizer)
 
@@ -248,9 +249,9 @@ class Pix2Pix():
         fake_A = self.generator.predict(imgs_B)
 
         # Rescale images 0 - 255
-        imgs_A = 127.5 * imgs_A + 127.5
-        imgs_B = 127.5 * imgs_B + 127.5
-        fake_A = 127.5 * fake_A + 127.5
+        imgs_A = (imgs_A + 1.0 ) * 127.5
+        imgs_B = (imgs_B + 1.0 ) * 127.5
+        fake_A = (fake_A + 1.0 ) * 127.5
 
         gen_imgs = np.concatenate([imgs_B, fake_A, imgs_A])
 
