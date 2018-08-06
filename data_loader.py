@@ -22,6 +22,7 @@ class DataLoader():
             print(img.shape)
             if img.shape[2] < 3:
                 img = np.repeat(img, 3, axis=2) 
+            print(img.shape)
 
             h, w, _ = img.shape
             _w = int(w/2)
