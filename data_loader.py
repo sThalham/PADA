@@ -19,10 +19,8 @@ class DataLoader():
         for img_path in batch_images:
             img = self.imread(img_path)
 
-            print(img.shape)
             if img.shape[2] < 3:
                 img = np.repeat(img, 3, axis=2) 
-            print(img.shape)
 
             h, w, _ = img.shape
             _w = int(w/2)
@@ -48,6 +46,8 @@ class DataLoader():
         imgs = []
         for path in paths:
             img = self.imread(path)
+            if img.shape[2] <3:
+                img = np.repeat(img, 3, axis=2)
             img = scipy.misc.imresize(img, self.img_res)
             imgs.append(img)
         imgs = np.array(imgs)/127.5 - 1.
