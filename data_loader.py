@@ -19,16 +19,16 @@ class DataLoader():
         for img_path in batch_images:
             img = self.imread(img_path)
 
+            print(img.shape)
+            if img.shape[2] < 3:
+                img = np.repeat(img, 3, axis=2) 
+
             h, w, _ = img.shape
             _w = int(w/2)
             img_A, img_B = img[:, :_w, :], img[:, _w:, :]
 
             img_A = scipy.misc.imresize(img_A, self.img_res)
             img_B = scipy.misc.imresize(img_B, self.img_res)
-
-            if img_A.shape[2] < 3:
-                img_A = np.repeat(img_A, 3, axis=2)
-                img_B = np.repeat(img_B, 3, axis=2)
 
             # If training => do random flip
             if not is_testing and np.random.random() < 0.5:
