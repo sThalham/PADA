@@ -24,11 +24,11 @@ class Pix2Pix():
         # Input shape
         self.img_rows = 512
         self.img_cols = 512
-        self.channels = 3
+        self.channels = 1
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
-        self.dataset_name = 'p2p_train_10k'
+        self.dataset_name = 'p2p_train_depth'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
         self.model_name = 'saved_model/' + self.dataset_name + '_model.h5'
@@ -271,6 +271,6 @@ class Pix2Pix():
 
 if __name__ == '__main__':
     gan = Pix2Pix()
-    gan.train(epochs=100, batch_size=10, sample_interval=10)
+    gan.train(epochs=100, batch_size=1, sample_interval=10)
     gan.test(batch_size=10)
 
