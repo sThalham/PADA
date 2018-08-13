@@ -20,7 +20,7 @@ from glob import glob
 
 
 class Pix2Pix():
-    def __init__(self):
+    def __init__(self, dataset):
         # Input shape
         self.img_rows = 512
         self.img_cols = 512
@@ -28,7 +28,7 @@ class Pix2Pix():
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
-        self.dataset_name = ' '
+        self.dataset_name = dataset
         #self.dataset_name = 'p2p_test_std_simplex'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
@@ -275,8 +275,7 @@ class Pix2Pix():
 
 
 if __name__ == '__main__':
-    gan = Pix2Pix()
-    gan.set_dataset_name(sys.argv[1])
+    gan = Pix2Pix(sys.argv[1])
     gan.train(epochs=100, batch_size=5, sample_interval=10)
     gan.test(batch_size=5)
 
