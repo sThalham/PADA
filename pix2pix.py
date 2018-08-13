@@ -19,7 +19,7 @@ import cv2
 from glob import glob
 
 
-class Pix2Pix(dataset):
+class Pix2Pix():
     def __init__(self):
         # Input shape
         self.img_rows = 512
@@ -28,7 +28,7 @@ class Pix2Pix(dataset):
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
-        self.dataset_name = dataset
+        self.dataset_name = ' '
         #self.dataset_name = 'p2p_test_std_simplex'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
@@ -55,7 +55,7 @@ class Pix2Pix(dataset):
             optimizer=optimizer,
             metrics=['accuracy'])
 
-        #-------------------------
+        ---
         # Construct Computational
         #   Graph of Generator
         #-------------------------
@@ -83,6 +83,10 @@ class Pix2Pix(dataset):
   
         # to rid useless error
         #self.discriminator.compile(optimizer)
+
+    def set_dataset_name(self, dataset):
+        self.dataset_name = dataset
+        print('dataset_name set to: ', dataset)
 
     def build_generator(self):
         """U-Net Generator"""
@@ -271,7 +275,8 @@ class Pix2Pix(dataset):
 
 
 if __name__ == '__main__':
-    gan = Pix2Pix(sys.argv[0])
+    gan = Pix2Pix()
+    gan.set_dataset_name(sys.argv[0])
     gan.train(epochs=100, batch_size=5, sample_interval=10)
     gan.test(batch_size=5)
 
