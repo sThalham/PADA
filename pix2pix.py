@@ -55,7 +55,7 @@ class Pix2Pix():
             optimizer=optimizer,
             metrics=['accuracy'])
 
-        ---
+        #------------------------
         # Construct Computational
         #   Graph of Generator
         #-------------------------
