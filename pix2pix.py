@@ -276,7 +276,7 @@ class Pix2Pix():
 
 if __name__ == '__main__':
     gan = Pix2Pix()
-    gan.set_dataset_name(sys.argv[0])
+    gan.set_dataset_name(sys.argv[1])
     gan.train(epochs=100, batch_size=5, sample_interval=10)
     gan.test(batch_size=5)
 
