@@ -1,11 +1,11 @@
 from __future__ import print_function, division
 import scipy
 
-from keras.datasets import mnist
-from keras_contrib.layers.normalization import InstanceNormalization
+#from keras_contrib.layers.normalization import InstanceNormalization
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
+from keras.activations import sigmoid
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model, load_model
 from keras.optimizers import Adam
@@ -29,7 +29,6 @@ class Pix2Pix():
 
         # Configure data loader
         self.dataset_name = dataset
-        #self.dataset_name = 'p2p_test_std_simplex'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
         self.model_name = 'saved_model/' + self.dataset_name + '_model.h5'
@@ -94,19 +93,22 @@ class Pix2Pix():
         def conv2d(layer_input, filters, f_size=4, bn=True):
             """Layers used during downsampling"""
             d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
-            d = LeakyReLU(alpha=0.2)(d)
             if bn:
                 d = BatchNormalization(momentum=0.8)(d)
+            d = LeakyReLU(alpha=0.2)(d)
+            d = Dropout(0.5)(d)
             return d
 
-        def deconv2d(layer_input, skip_input, filters, f_size=4, dropout_rate=0):
+        def deconv2d(layer_input, skip_input=None, filters=0, f_size=4, dropout_rate=0.5):
             """Layers used during upsampling"""
             u = UpSampling2D(size=2)(layer_input)
             u = Conv2D(filters, kernel_size=f_size, strides=1, padding='same', activation='relu')(u)
+            u = BatchNormalization(momentum=0.8)(u)
+            u = LeakyReLU(alpha=0.2)(u)
             if dropout_rate:
                 u = Dropout(dropout_rate)(u)
-            u = BatchNormalization(momentum=0.8)(u)
-            u = Concatenate()([u, skip_input])
+            if skip_input == None:
+                u = Concatenate()([u, skip_input])
             return u
 
         # Image input
@@ -114,35 +116,39 @@ class Pix2Pix():
         print('input shape: ', self.img_shape)
 
         # Downsampling
-        d1 = conv2d(d0, self.gf, bn=False)
-        d2 = conv2d(d1, self.gf*2) # in:240x320
-        d3 = conv2d(d2, self.gf*4) # in:120x160
-        d4 = conv2d(d3, self.gf*8) # in: 60*80
-        d5 = conv2d(d4, self.gf*8) # in: 30*40
-        d6 = conv2d(d5, self.gf*8) # in: 15*20
-        d7 = conv2d(d6, self.gf*8)
+        d1 = conv2d(d0, filters=self.gf, bn=True)
+        d2 = conv2d(d1, filters=self.gf*2, bn=True) # 126
+        d3 = conv2d(d2, filters=self.gf*4, bn=True) # 256
+        d4 = conv2d(d3, filters=self.gf*8, bn=True) # 512
+        d5 = conv2d(d4, filters=self.gf*8, bn=True) # 512
+        d6 = conv2d(d5, filters=self.gf*8, bn=True) # 512
+        d7 = conv2d(d6, filters=self.gf*8, bn=True)
+        d8 = conv2d(d7, filters=self.gf*8, bn=True)
 
         # Upsampling
-        u1 = deconv2d(d7, d6, self.gf*8)
-        u2 = deconv2d(u1, d5, self.gf*8)
-        u3 = deconv2d(u2, d4, self.gf*8)
-        u4 = deconv2d(u3, d3, self.gf*4)
-        u5 = deconv2d(u4, d2, self.gf*2)
-        u6 = deconv2d(u5, d1, self.gf)
+        u1 = deconv2d(d8, filters=self.gf*8)
+        u2 = deconv2d(u1, d7, filters=self.gf*16)
+        u3 = deconv2d(u2, d6, filters=self.gf*16)
+        u4 = deconv2d(u3, d5, filters=self.gf*16)
+        u5 = deconv2d(u4, d4, filters=self.gf*16)
+        u6 = deconv2d(u5, d3, filters=self.gf*8)
+        u7 = deconv2d(u6, d2, filters=self.gf*4)
+        u8 = deconv2d(u7, d1, filters=self.gf*2)
 
-        u7 = UpSampling2D(size=2)(u6)
-        output_img = Conv2D(self.channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u7)
+        #u7 = UpSampling2D(size=2)(u6)
+        output_img = Conv2D(self.channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u8)
 
         return Model(d0, output_img)
 
     def build_discriminator(self):
 
-        def d_layer(layer_input, filters, f_size=4, bn=True):
+        def d_layer(layer_input, filters, f_size=4):
             """Discriminator layer"""
             d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
+            d = BatchNormalization(momentum=0.8)(d)
             d = LeakyReLU(alpha=0.2)(d)
-            if bn:
-                d = BatchNormalization(momentum=0.8)(d)
+            d = Dropout(0.5)(d)
+
             return d
 
         img_A = Input(shape=self.img_shape)
@@ -151,12 +157,14 @@ class Pix2Pix():
         # Concatenate image and conditioning image by channels to produce input
         combined_imgs = Concatenate(axis=-1)([img_A, img_B])
 
-        d1 = d_layer(combined_imgs, self.df, bn=False)
+        d1 = d_layer(combined_imgs, self.df)
         d2 = d_layer(d1, self.df*2)
         d3 = d_layer(d2, self.df*4)
         d4 = d_layer(d3, self.df*8)
 
         validity = Conv2D(1, kernel_size=4, strides=1, padding='same')(d4)
+        #d_out = Conv2D(1, kernel_size=4, strides=1, padding='same')(d4)
+        #validity = sigmoid(d_out)
 
         return Model([img_A, img_B], validity)
 
