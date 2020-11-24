@@ -18,77 +18,40 @@ import os
 import cv2
 from glob import glob
 
+from keras_contrib.applications import resnet
 
-class Pix2Pix():
-    def __init__(self, dataset):
+
+class default_model():
+    def __init__(self, input_shape=(224, 224)):
         # Input shape
-        self.img_rows = 512
-        self.img_cols = 512
+        self.img_rows = input_shape[0]
+        self.img_cols = input_shape[1]
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
         self.dataset_name = dataset
-        self.data_loader = DataLoader(dataset_name=self.dataset_name,
-                                      img_res=(self.img_rows, self.img_cols))
-        self.model_name = 'saved_model/' + self.dataset_name + '_model.h5'
-
-
-        # Calculate output shape of D (PatchGAN)
-        patch = int(self.img_rows / 2**4)
-        # patch = int( 24 )
-        self.disc_patch = (patch, patch, 1)
-        #self.disc_patch = ( 30 , 40, 1)
-
-        # Number of filters in the first layer of G and D
-        self.gf = 64
-        self.df = 64
-        #self.gf = np.array([ 120, 160 ])
-        #self.df = np.array([ 120, 160 ])
+        self.data_loader = DataLoader(img_res=(self.img_rows, self.img_cols))
+        self.model_name = 'saved_model/' + '_model.h5'
 
         optimizer = Adam(0.0002, 0.5)
 
-        # Build and compile the discriminator
-        self.discriminator = self.build_discriminator()
-        self.discriminator.compile(loss='mse',
-            optimizer=optimizer,
-            metrics=['accuracy'])
-
-        #------------------------
-        # Construct Computational
-        #   Graph of Generator
-        #-------------------------
-
-        # Build the generator
         self.generator = self.build_generator()
 
-        # Input images and their conditioning images
-        img_A = Input(shape=self.img_shape)
-        img_B = Input(shape=self.img_shape)
+        img_observed = Input(shape=self.img_shape)
+        img_rendered = Input(shape=self.img_shape)
+        img_da = Input(shape=self.img_shape)
 
-        # By conditioning on B generate a fake version of A
-        fake_A = self.generator(img_B)
+        delta, aux_task = self.generator([img_observed, img_rendered, img_da])
 
-        # For the combined model we will only train the generator
-        self.discriminator.trainable = False
-
-        # Discriminators determines validity of translated images / condition pairs
-        valid = self.discriminator([fake_A, img_B])
-
-        self.combined = Model(inputs=[img_A, img_B], outputs=[valid, fake_A])
-        self.combined.compile(loss=['mse', 'mae'],
-                              loss_weights=[1, 100],
-                              optimizer=optimizer)
-  
-        # to rid useless error
-        #self.discriminator.compile(optimizer)
+        self.model = Model(inputs=[img_observed, img_rendered], outputs=[delta, aux_task])
+        self.model.compile(loss=['mae'], optimizer=optimizer)
 
     def set_dataset_name(self, dataset):
         self.dataset_name = dataset
         print('dataset_name set to: ', dataset)
 
-    def build_generator(self):
-        """U-Net Generator"""
+    def build_generator(self, pyramid_features=256, head_features=256):
 
         def conv2d(layer_input, filters, f_size=4, bn=True):
             """Layers used during downsampling"""
@@ -112,8 +75,18 @@ class Pix2Pix():
             return u
 
         # Image input
-        d0 = Input(shape=self.img_shape)
-        print('input shape: ', self.img_shape)
+        obs = Input(shape=self.img_shape)
+        ren = Input(shape=self.img_shape)
+        real = Input(shape=self.img_shape)
+
+        latent_obs = resnet.resnet18(obs, self.num_classes)
+        latent_ren = resnet.resnet18(ren, self.num_classes)
+
+        bottleneck_obs = latent_obs(obs)
+        bottleneck_ren = latent_ren(ren)
+
+        da_out_obs = latent_obs(real)
+        da_out_ren = latent_ren(real)
 
         # Downsampling
         d1 = conv2d(d0, filters=self.gf, bn=True)
