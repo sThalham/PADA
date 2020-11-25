@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class DataLoader():
-    def __init__(self, dataset_name, img_res=(240, 320)):
-        self.dataset_name = dataset_name
+    def __init__(self, img_res=(224, 224)):
+        self.dataset_name = 'testing'
         self.img_res = img_res
 
     def load_data(self, batch_size=1, is_testing=False):
