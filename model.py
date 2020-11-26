@@ -1,24 +1,12 @@
 from __future__ import print_function, division
-import scipy
 
-#from keras_contrib.layers.normalization import InstanceNormalization
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Subtract, Add
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
-from keras.layers.advanced_activations import LeakyReLU
 from keras.activations import sigmoid
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model, load_model
 from keras.optimizers import Adam
-import datetime
-import sys
-from data_loader import DataLoader
-from pathlib import Path
-import numpy as np
-import os
-import cv2
-from glob import glob
 
-from keras_contrib.applications import resnet
 import keras_resnet
 import keras_resnet.models
 
@@ -31,7 +19,7 @@ class default_model():
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
-        optimizer = Adam(0.0002, 0.5)
+        optimizer = Adam(0.0002)
 
         img_observed = Input(shape=self.img_shape)
         img_rendered = Input(shape=self.img_shape)
@@ -67,7 +55,7 @@ class default_model():
         P4_upsampled = UpSampling2D(size=2, interpolation="bilinear")(P4)
         P4_mid = Add()([P5_upsampled, P4])
         P4_mid = Conv2D(feature_size, kernel_size=3, strides=1, padding='same')(P4_mid)
-        P3_mid = Add()([P4_upsampled, P3])sigmoid
+        P3_mid = Add()([P4_upsampled, P3])
         P3_mid = Conv2D(feature_size, kernel_size=3, strides=1, padding='same')(P3_mid)
         P3_down = Conv2D(feature_size, kernel_size=3, strides=2, padding='same')(P3_mid)
         #P3_fin = Add()([P3_mid, P3])

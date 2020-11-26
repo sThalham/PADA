@@ -1,12 +1,18 @@
 import scipy
 from glob import glob
 import numpy as np
-import matplotlib.pyplot as plt
+import ply_loader
+import open3d
 
 class DataLoader():
-    def __init__(self, img_res=(224, 224)):
-        self.dataset_name = 'testing'
+    def __init__(self, batch_size, img_res=(224, 224), is_testing=False):
         self.img_res = img_res
+        self.batch_size = batch_size
+        self.is_testing = is_testing
+        ply_path = '/home/stefan/data/Meshes/linemod_13/obj_02.ply'
+        model_vsd = ply_loader.load_ply(ply_path)
+        self.pcd_model = open3d.PointCloud()
+        self.pcd_model.points = open3d.Vector3dVector(model_vsd['pts'])
 
     def load_data(self, batch_size=1, is_testing=False):
         data_type = "train" if not is_testing else "test"
@@ -55,14 +61,14 @@ class DataLoader():
 
         return imgs
 
-    def load_batch(self, batch_size=1, is_testing=False):
-        data_type = "train" if not is_testing else "val"
+    def load_batch(self):
+        data_type = "train" if not self.is_testing else "val"
         path = glob('./datasets/%s/%s/*' % (self.dataset_name, data_type))
 
-        self.n_batches = int(len(path) / batch_size)
+        self.n_batches = int(len(path) / self.batch_size)
 
         for i in range(self.n_batches-1):
-            batch = path[i*batch_size:(i+1)*batch_size]
+            batch = path[i * self.batch_size:(i+1) * self.batch_size]
             imgs_A, imgs_B = [], []
             for img in batch:
                 img = self.imread(img)
@@ -74,7 +80,7 @@ class DataLoader():
                 img_A = scipy.misc.imresize(img_A, self.img_res)
                 img_B = scipy.misc.imresize(img_B, self.img_res)
 
-                if not is_testing and np.random.random() > 0.5:
+                if not self.is_testing and np.random.random() > 0.5:
                         img_A = np.fliplr(img_A)
                         img_B = np.fliplr(img_B)
 
