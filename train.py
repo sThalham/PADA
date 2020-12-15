@@ -20,7 +20,7 @@ import cv2
 from glob import glob
 
 
-def train(network, epochs, batch_size=1, sample_interval=50):
+def train(network, dataset_path, real_path, mesh_path, epochs, batch_size=1, sample_interval=50):
 
     #model_file = Path(self.model_name)
     #if model_file.is_file():
@@ -28,7 +28,7 @@ def train(network, epochs, batch_size=1, sample_interval=50):
     #    self.combined.load_weights(self.model_name)
     #    return
 
-    data_loader = DataLoader(batch_size)
+    data_loader = DataLoader(dataset_path, real_path, mesh_path, batch_size)
 
     for epoch in range(epochs):
         for batch_i, (obsv, rend, real, delta_gt, da_gt) in enumerate(data_loader.load_batch()):
@@ -37,17 +37,17 @@ def train(network, epochs, batch_size=1, sample_interval=50):
 
             elapsed_time = datetime.datetime.now() - start_time
             # Plot the progress
-            print ("Epoch %d/%d     Iteration: %d/%d Loss: %f || pose: %f da: %f" % (epoch, epochs,
+            print("Epoch %d/%d     Iteration: %d/%d Loss: %f || pose: %f da: %f" % (epoch, epochs,
                                                                         batch_i, data_loader.n_batches,
                                                                         g_loss[0] + g_loss[1],
                                                                         g_loss[0], g_loss[1]))
 
             # Save samples once every epoch
-        self.sample_images(epoch)
+        sample_images(epoch)
 
         #if epoch % 10 == 0:
             
-        self.save_model_weights(self.combined, self.model_name)	
+        save_model_weights(combined, 'linemod_' + str(epoch))
     print("Training finished!")
 
 
@@ -82,6 +82,7 @@ def test(self, batch_size=1):
         ppro = ppro + batch_size
     print("generated images under /results")
 
+
 def sample_images(self, epoch):
     os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
     r, c = 3, 3
@@ -113,6 +114,9 @@ def save_model_weights(self, model, filepath, overwrite=True):
 
 if __name__ == '__main__':
     PAUDA = default_model()
-    train(PAUDA, epochs=100, batch_size=4)
+    dataset_path = '/home/stefan/data/train_data/linemod_PBR_BOP'
+    mesh_path = '/home/stefan/data/Meshes/linemod_13/obj_02.ply'
+    real_path = '/home/stefan/data/datasets/YCB-V/train_real/000000/rgb'
+    train(PAUDA, dataset_path, real_path, mesh_path, epochs=100, batch_size=4)
     gan.test(batch_size=5)
 
