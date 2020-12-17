@@ -116,7 +116,7 @@ if __name__ == '__main__':
     PAUDA = default_model()
     dataset_path = '/home/stefan/data/train_data/linemod_PBR_BOP'
     mesh_path = '/home/stefan/data/Meshes/linemod_13/obj_02.ply'
-    real_path = '/home/stefan/data/datasets/YCB-V/train_real/000000/rgb'
+    real_path = '/home/stefan/data/datasets/cocoval2017'
     train(PAUDA, dataset_path, real_path, mesh_path, epochs=100, batch_size=4)
     gan.test(batch_size=5)
 
