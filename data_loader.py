@@ -10,7 +10,7 @@ import cv2
 import transforms3d as tf3d
 import copy
 
-bop_renderer_path = '/home/stefan/workspace/bop_renderer/build'
+bop_renderer_path = '/home/stefan/bop_renderer/build'
 sys.path.append(bop_renderer_path)
 
 import bop_renderer
@@ -179,7 +179,11 @@ class DataLoader():
                 rand_pose[:3, :3] = tf3d.euler.euler2mat(np.random.normal(scale=np.pi*0.25), np.random.normal(scale=np.pi*0.25), np.random.normal(scale=np.pi*0.25))
                 rand_pose[:3, 3] = [np.random.normal(scale=30), np.random.normal(scale=30), np.random.normal(scale=30)]
                 obsv_pose = np.matmul(true_pose, rand_pose)
-                poses.append(obsv_pose)
+                obsv_quat = tf3d.quaternions.mat2quat(obsv_pose[:3, :3])
+                pose = np.array([obsv_pose[0, 3], obsv_pose[1, 3], obsv_pose[2, 3], obsv_quat[1], obsv_quat[1], obsv_quat[2], obsv_quat[3]])
+                pose = np.repeat(pose[np.newaxis, :], repeats=25, axis=0)
+                #pose.reshape((5, 5, 7))
+                poses.append(pose.reshape((5, 5, 7)))
                 obsv_center_y = ((obsv_pose[0, 3] * self.fx) / obsv_pose[2, 3]) + self.cx
                 obsv_center_x = ((obsv_pose[1, 3] * self.fy) / obsv_pose[2, 3]) + self.cy
                 dia_pixX = ((self.model_dia * self.fx) / obsv_pose[2, 3])
@@ -189,7 +193,7 @@ class DataLoader():
                 x_max = int(obsv_center_x + dia_pixX * 0.75)
                 y_min = int(obsv_center_y - dia_pixY * 0.75)
                 y_max = int(obsv_center_y + dia_pixY * 0.75)
-                print(x_min, y_min, x_max, y_max)
+                #print(x_min, y_min, x_max, y_max)
 
                 img_rend = self.render_img(obsv_pose, self.obj_id)
                 img_rend = np.pad(img_rend, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
@@ -218,5 +222,5 @@ class DataLoader():
             imgs_real = np.array(imgs_real) / 127.5 - 1.
             poses = np.array(poses)
 
-            yield imgs_obsv, imgs_rend, imgs_real, poses
+            yield imgs_obsv, imgs_rend, poses
 

@@ -31,22 +31,20 @@ def train(network, dataset_path, real_path, mesh_path, epochs, batch_size=1, sam
     data_loader = DataLoader(dataset_path, real_path, mesh_path, batch_size)
 
     for epoch in range(epochs):
-        for batch_i, (obsv, rend, real, delta_gt, da_gt) in enumerate(data_loader.load_batch()):
+        #for batch_i, (obsv, rend, real, delta_gt, da_gt) in enumerate(data_loader.load_batch()):
+        for batch_i, (obsv, rend, delta) in enumerate(data_loader.load_batch()):
 
-            g_loss = network.model.train_on_batch([obsv, rend, real], [delta_gt, da_gt])
+            #g_loss = network.model.train_on_batch([obsv, rend, real], [delta_gt, da_gt])
+            g_loss = network.model.train_on_batch([obsv, rend], delta)
 
-            elapsed_time = datetime.datetime.now() - start_time
+            #elapsed_time = datetime.datetime.now() - start_time
             # Plot the progress
-            print("Epoch %d/%d     Iteration: %d/%d Loss: %f || pose: %f da: %f" % (epoch, epochs,
-                                                                        batch_i, data_loader.n_batches,
-                                                                        g_loss[0] + g_loss[1],
-                                                                        g_loss[0], g_loss[1]))
+            #print("Epoch %d/%d     Iteration: %d/%d Loss: %f || pose: %f da: %f" % (epoch, epochs,
+            #                                                            batch_i, data_loader.n_batches,
+            #                                                            g_loss[0] + g_loss[1],
+            #                                                            g_loss[0], g_loss[1]))
+            print("Epoch %d/%d     Iteration: %d/%d Loss: %f" % (epoch, epochs, batch_i, data_loader.n_batches, g_loss))
 
-            # Save samples once every epoch
-        sample_images(epoch)
-
-        #if epoch % 10 == 0:
-            
         save_model_weights(combined, 'linemod_' + str(epoch))
     print("Training finished!")
 

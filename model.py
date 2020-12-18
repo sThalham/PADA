@@ -6,6 +6,7 @@ from keras.activations import sigmoid
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model, load_model
 from keras.optimizers import Adam
+from keras.backend import l2_normalize
 
 import keras_resnet
 import keras_resnet.models
@@ -19,31 +20,34 @@ class default_model():
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
-        optimizer = Adam(0.0002)
+        optimizer = Adam(lr=1e-5, clipnorm=0.001)
 
         img_observed = Input(shape=self.img_shape)
         img_rendered = Input(shape=self.img_shape)
-        img_da = Input(shape=self.img_shape)
+        #img_da = Input(shape=self.img_shape)
 
         self.backbone_obs = self.resnet_no_top()
-        print(self.backbone_obs)
         self.backbone_ren = self.resnet_no_top()
         estimator = self.build_generator()
 
-        delta, aux_task = estimator([img_observed, img_rendered, img_da])
+        #delta, aux_task = estimator([img_observed, img_rendered, img_da])
+        delta = estimator([img_observed, img_rendered])
 
-        self.model = Model(inputs=[img_observed, img_rendered, img_da], outputs=[delta, aux_task])
+        #self.model = Model(inputs=[img_observed, img_rendered, img_da], outputs=[delta, aux_task])
+        self.model = Model(inputs=[img_observed, img_rendered], outputs=delta)
         print(self.model.summary())
-        self.model.compile(loss=['mae', 'binary_crossentropy'], weights=[1, 1], optimizer=optimizer)
+        #self.model.compile(loss=['mae', 'binary_crossentropy'], weights=[1, 1], optimizer=optimizer)
+        self.model.compile(loss='mse', optimizer=optimizer)
 
     def resnet_no_top(self):
 
         input = Input(shape=self.img_shape)
         resnet = keras_resnet.models.ResNet18(input, include_top=False, freeze_bn=True)
 
-        outputs = self.PFPN(resnet.outputs[1], resnet.outputs[2], resnet.outputs[3])
+        #outputs = self.PFPN(resnet.outputs[1], resnet.outputs[2], resnet.outputs[3])
+        #return Model(inputs=input, outputs=outputs)
 
-        return Model(inputs=input, outputs=outputs)
+        return Model(inputs=input, outputs=[resnet.outputs[1], resnet.outputs[2], resnet.outputs[3]])
 
     def PFPN(self, C3, C4, C5, feature_size=256):
 
@@ -56,7 +60,6 @@ class default_model():
         P4_mid = Add()([P5_upsampled, P4])
         P4_mid = Conv2D(feature_size, kernel_size=3, strides=1, padding='same')(P4_mid)
         P3_mid = Add()([P4_upsampled, P3])
-        P3_mid = Conv2D(feature_size, kernel_size=3, strides=1, padding='same')(P3_mid)
         P3_down = Conv2D(feature_size, kernel_size=3, strides=2, padding='same')(P3_mid)
         #P3_fin = Add()([P3_mid, P3])
         #P3 = Conv2D(feature_size, kernel_size=3, strides=1, padding='same', name='P3')(P3_fin)
@@ -76,20 +79,39 @@ class default_model():
         # Image input
         obs = Input(shape=self.img_shape)
         ren = Input(shape=self.img_shape)
-        real = Input(shape=self.img_shape)
+        #real = Input(shape=self.img_shape)
 
         model_obs = self.backbone_obs(obs)
         model_ren = self.backbone_ren(ren)
 
-        diff = Subtract()([model_obs, model_ren])
-        delta = Conv2D(4, kernel_size=3)(diff)
+        diff_P3 = Subtract()([model_obs[0], model_ren[0]])
+        diff_P4 = Subtract()([model_obs[1], model_ren[1]])
+        diff_P5 = Subtract()([model_obs[2], model_ren[2]])
 
-        da_obs = self.backbone_obs(real)
-        da_ren = self.backbone_ren(real)
-        da_out_obs = Conv2D(4, kernel_size=3)(da_obs)
-        da_out_ren = Conv2D(4, kernel_size=3)(da_ren)
-        da_act_obs = Activation('sigmoid')(da_out_obs)
-        da_act_ren = Activation('sigmoid')(da_out_ren)
-        da_out = Concatenate()([da_act_obs, da_act_ren])
+        fusion_py = self.PFPN(diff_P3, diff_P4, diff_P5)
 
-        return Model(inputs=[obs, ren, real], outputs=[delta, da_out])
+        head_tra = Conv2D(head_features, kernel_size=3, strides=1, padding='same')(fusion_py)
+        head_tra = Conv2D(head_features, kernel_size=3, strides=1, padding='same')(head_tra)
+        head_tra = Conv2D(head_features, kernel_size=3, strides=1, padding='same')(head_tra)
+        delta_tra = Conv2D(3, kernel_size=3)(head_tra)
+
+        head_rot = Conv2D(head_features, kernel_size=3, strides=1, padding='same')(fusion_py)
+        head_rot = Conv2D(head_features, kernel_size=3, strides=1, padding='same')(head_rot)
+        head_rot = Conv2D(head_features, kernel_size=3, strides=1, padding='same')(head_rot)
+        delta_rot = Conv2D(4, kernel_size=3)(head_rot)
+        print(delta_rot)
+        #delta_rot = l2_normalize(delta_rot, axis=-1)
+
+        delta = Concatenate(axis=-1)([delta_tra, delta_rot])
+
+        #da_obs = self.backbone_obs(real)
+        #da_ren = self.backbone_ren(real)
+        #da_out_obs = Conv2D(4, kernel_size=3)(da_obs)
+        #da_out_ren = Conv2D(4, kernel_size=3)(da_ren)
+        #da_act_obs = Activation('sigmoid')(da_out_obs)
+        #da_act_ren = Activation('sigmoid')(da_out_ren)
+        #da_out = Concatenate()([da_act_obs, da_act_ren])
+
+        #return Model(inputs=[obs, ren, real], outputs=[delta, da_out])
+
+        return Model(inputs=[obs, ren], outputs=delta)
