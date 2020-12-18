@@ -20,7 +20,7 @@ import cv2
 from glob import glob
 
 
-def train(network, dataset_path, real_path, mesh_path, epochs, batch_size=1, sample_interval=50):
+def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_size=1, sample_interval=50):
 
     #model_file = Path(self.model_name)
     #if model_file.is_file():
@@ -28,7 +28,7 @@ def train(network, dataset_path, real_path, mesh_path, epochs, batch_size=1, sam
     #    self.combined.load_weights(self.model_name)
     #    return
 
-    data_loader = DataLoader(dataset_path, real_path, mesh_path, batch_size)
+    data_loader = DataLoader(dataset_path, real_path, mesh_path, mesh_info, batch_size)
 
     for epoch in range(epochs):
         #for batch_i, (obsv, rend, real, delta_gt, da_gt) in enumerate(data_loader.load_batch()):
@@ -111,11 +111,12 @@ def save_model_weights(self, model, filepath, overwrite=True):
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    #os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     PAUDA = default_model()
     dataset_path = '/home/stefan/data/train_data/linemod_PBR_BOP'
-    mesh_path = '/home/stefan/data/Meshes/linemod_13/obj_02.ply'
+    mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'
+    mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
-    train(PAUDA, dataset_path, real_path, mesh_path, epochs=100, batch_size=32)
+    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=1)
 
 
