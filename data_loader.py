@@ -9,6 +9,7 @@ import yaml
 import cv2
 import transforms3d as tf3d
 import copy
+import imgaug.augmenters as iaa
 
 bop_renderer_path = '/home/stefan/bop_renderer/build'
 sys.path.append(bop_renderer_path)
@@ -88,7 +89,45 @@ class DataLoader():
         np.random.shuffle(c)
         self.Anns, self.image_ids = zip(*c)
 
-        self.n_batches = int(len(self.image_ids) / self.batch_size)
+        self.img_seq = iaa.Sequential([
+        # blur
+        iaa.SomeOf((0, 2), [
+            iaa.GaussianBlur((0.0, 2.0)),
+            iaa.AverageBlur(k=(3, 7)),
+            iaa.MedianBlur(k=(3, 7)),
+            iaa.BilateralBlur(d=(1, 7)),
+            iaa.MotionBlur(k=(3, 7))
+        ]),
+        # color
+        iaa.SomeOf((0, 2), [
+            # iaa.WithColorspace(),
+            iaa.AddToHueAndSaturation((-15, 15)),
+            # iaa.ChangeColorspace(to_colorspace[], alpha=0.5),
+            iaa.Grayscale(alpha=(0.0, 0.2))
+        ]),
+        # brightness
+        iaa.OneOf([
+            iaa.Sequential([
+                iaa.Add((-10, 10), per_channel=0.5),
+                iaa.Multiply((0.75, 1.25), per_channel=0.5)
+            ]),
+            iaa.Add((-10, 10), per_channel=0.5),
+            iaa.Multiply((0.75, 1.25), per_channel=0.5),
+            iaa.FrequencyNoiseAlpha(
+                exponent=(-4, 0),
+                first=iaa.Multiply((0.75, 1.25), per_channel=0.5),
+                second=iaa.LinearContrast((0.7, 1.3), per_channel=0.5))
+        ]),
+        # contrast
+        iaa.SomeOf((0, 2), [
+            iaa.GammaContrast((0.75, 1.25), per_channel=0.5),
+            iaa.SigmoidContrast(gain=(0, 10), cutoff=(0.25, 0.75), per_channel=0.5),
+            iaa.LogContrast(gain=(0.75, 1), per_channel=0.5),
+            iaa.LinearContrast(alpha=(0.7, 1.3), per_channel=0.5)
+        ]),
+        ], random_order=True)
+
+        self.n_batches = int(np.floor(len(self.image_ids) / self.batch_size))
 
     def render_img(self, extrinsics, obj_id):
         R = extrinsics[:3, :3]
@@ -171,19 +210,30 @@ class DataLoader():
                 pad_val = 100
                 obsv_img = np.pad(obsv_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
                 real_img = np.pad(real_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
+                real_img = real_img.astype(np.uint8)
+                real_img = self.img_seq.augment_image(real_img)
 
+                # annotate
+                rand_pose = np.eye((4), dtype=np.float32)
+                rand_pose[:3, :3] = tf3d.euler.euler2mat(np.random.normal(scale=np.pi*0.15), np.random.normal(scale=np.pi*0.15), np.random.normal(scale=np.pi*0.15))
+                rand_quat = tf3d.quaternions.mat2quat(rand_pose[:3, :3])
+                rand_pose[:3, 3] = [np.random.normal(scale=10), np.random.normal(scale=10), np.random.normal(scale=10)]
+                anno_pose = np.array(
+                    [rand_pose[0, 3], rand_pose[1, 3], rand_pose[2, 3], rand_quat[1], rand_quat[1], rand_quat[2],
+                     rand_quat[3]])
+                # normalize annotation
+                anno_pose[:3] = anno_pose[:3] * (1/30)
+
+                anno_pose = np.repeat(anno_pose[np.newaxis, :], repeats=25, axis=0)
+                # pose.reshape((5, 5, 7))
+                poses.append(anno_pose.reshape((5, 5, 7)))
+
+                # render and sample crops
                 true_pose = np.eye((4), dtype=np.float32)
                 true_pose[:3, :3] = tf3d.quaternions.quat2mat(annotation['pose'][3:])
                 true_pose[:3, 3] = annotation['pose'][:3]
-                rand_pose = np.eye((4), dtype=np.float32)
-                rand_pose[:3, :3] = tf3d.euler.euler2mat(np.random.normal(scale=np.pi*0.25), np.random.normal(scale=np.pi*0.25), np.random.normal(scale=np.pi*0.25))
-                rand_pose[:3, 3] = [np.random.normal(scale=30), np.random.normal(scale=30), np.random.normal(scale=30)]
                 obsv_pose = np.matmul(true_pose, rand_pose)
-                obsv_quat = tf3d.quaternions.mat2quat(obsv_pose[:3, :3])
-                pose = np.array([obsv_pose[0, 3], obsv_pose[1, 3], obsv_pose[2, 3], obsv_quat[1], obsv_quat[1], obsv_quat[2], obsv_quat[3]])
-                pose = np.repeat(pose[np.newaxis, :], repeats=25, axis=0)
-                #pose.reshape((5, 5, 7))
-                poses.append(pose.reshape((5, 5, 7)))
+
                 obsv_center_y = ((obsv_pose[0, 3] * self.fx) / obsv_pose[2, 3]) + self.cx
                 obsv_center_x = ((obsv_pose[1, 3] * self.fy) / obsv_pose[2, 3]) + self.cy
                 dia_pixX = ((self.model_dia * self.fx) / obsv_pose[2, 3])
@@ -201,17 +251,15 @@ class DataLoader():
                 img_obsv = obsv_img[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
                 img_real = real_img[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
 
+                if img_rend.size == 0:
+                    print(x_min, y_min, x_max, y_max)
+                    img_input = np.concatenate([img_obsv, img_rend, img_real], axis=1)
+                    cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_input)
+                    cv2.imwrite('/home/stefan/PADA_viz/ori_input.png', obsv_img)
+
                 img_rend = cv2.resize(img_rend, self.img_res)
                 img_obsv = cv2.resize(img_obsv, self.img_res)
                 img_real = cv2.resize(img_real, self.img_res)
-
-                img_input = np.concatenate([img_obsv, img_rend, img_real], axis=1)
-                cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_input)
-                cv2.imwrite('/home/stefan/PADA_viz/ori_input.png', obsv_img)
-
-                #if not self.is_testing and np.random.random() > 0.5:
-                #        img_A = np.fliplr(img_A)
-                #        img_B = np.fliplr(img_B)
 
                 imgs_obsv.append(img_obsv)
                 imgs_rend.append(img_rend)

@@ -111,10 +111,11 @@ def save_model_weights(self, model, filepath, overwrite=True):
 
 
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     PAUDA = default_model()
     dataset_path = '/home/stefan/data/train_data/linemod_PBR_BOP'
     mesh_path = '/home/stefan/data/Meshes/linemod_13/obj_02.ply'
     real_path = '/home/stefan/data/datasets/cocoval2017'
-    train(PAUDA, dataset_path, real_path, mesh_path, epochs=100, batch_size=4)
-    gan.test(batch_size=5)
+    train(PAUDA, dataset_path, real_path, mesh_path, epochs=100, batch_size=32)
+
 
