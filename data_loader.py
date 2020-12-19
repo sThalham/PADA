@@ -12,7 +12,7 @@ import copy
 import imgaug.augmenters as iaa
 import multiprocessing
 
-bop_renderer_path = '/home/stefan/bop_renderer/build'
+bop_renderer_path = '/home/stefan/workspace/bop_renderer/build'
 sys.path.append(bop_renderer_path)
 
 import bop_renderer

@@ -1,11 +1,13 @@
 from __future__ import print_function, division
 
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Subtract, Add
+import tensorflow as tf
+
+from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Subtract, Add
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.activations import sigmoid
-from keras.layers.convolutional import UpSampling2D, Conv2D
-from keras.models import Sequential, Model, load_model
-from keras.optimizers import Adam
+from tensorflow.keras.layers import UpSampling2D, Conv2D
+from tensorflow.keras.models import Sequential, Model, load_model
+from tensorflow.keras.optimizers import Adam
 from keras.backend import l2_normalize
 
 import keras_resnet
@@ -42,12 +44,22 @@ class default_model():
     def resnet_no_top(self):
 
         input = Input(shape=self.img_shape)
-        resnet = keras_resnet.models.ResNet18(input, include_top=False, freeze_bn=True)
+        # DenseNet
+        backbone = tf.keras.applications.DenseNet121(include_top=False, weights='imagenet', input_tensor=input, input_shape=self.img_shape, pooling=None, classes=1)
+        layer_names = [138, 310, 426]
+        backbone_outputs = [backbone.layers[idx].output for idx in layer_names]
+        print(backbone_outputs[0])
+        print(backbone_outputs[1])
+        print(backbone_outputs[2])
+
+        #for i, layer in enumerate(backbone.layers):
+        #    print(i, layer.name)
+        #resnet = keras_resnet.models.ResNet18(input, include_top=False, freeze_bn=True)
 
         #outputs = self.PFPN(resnet.outputs[1], resnet.outputs[2], resnet.outputs[3])
-        #return Model(inputs=input, outputs=outputs)
+        return Model(inputs=input, outputs=backbone_outputs)
 
-        return Model(inputs=input, outputs=[resnet.outputs[1], resnet.outputs[2], resnet.outputs[3]])
+        #return Model(inputs=input, outputs=[backbone.outputs[1], backbone.outputs[2], backbone.outputs[3]])
 
     def PFPN(self, C3, C4, C5, feature_size=256):
 

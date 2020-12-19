@@ -1,19 +1,10 @@
 from __future__ import print_function, division
-import scipy
 
-#from keras_contrib.layers.normalization import InstanceNormalization
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Subtract, Add
-from keras.layers import BatchNormalization, Activation, ZeroPadding2D
-from keras.layers.advanced_activations import LeakyReLU
-from keras.activations import sigmoid
-from keras.layers.convolutional import UpSampling2D, Conv2D
-from keras.models import Sequential, Model, load_model
-from keras.optimizers import Adam
+import scipy
 import datetime
 import sys
 from data_loader import DataLoader
 from model import default_model
-from pathlib import Path
 import numpy as np
 import os
 import cv2
@@ -98,6 +89,6 @@ if __name__ == '__main__':
     mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'
     mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
-    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=32)
+    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=16)
 
 
