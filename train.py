@@ -45,7 +45,7 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_
             #                                                            g_loss[0], g_loss[1]))
             print("Epoch %d/%d     Iteration: %d/%d Loss: %f" % (epoch, epochs, batch_i, data_loader.n_batches, g_loss))
 
-        save_model_weights(combined, 'linemod_' + str(epoch))
+        save_model_weights(network.model, 'linemod_' + str(epoch))
     print("Training finished!")
 
 
@@ -81,33 +81,14 @@ def test(self, batch_size=1):
     print("generated images under /results")
 
 
-def sample_images(self, epoch):
-    os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
-    r, c = 3, 3
-    batch_size = 3
-
-    imgs_A, imgs_B = self.data_loader.load_data(batch_size, is_testing=True)
-    fake_A = self.generator.predict(imgs_B)
-
-    # Rescale images 0 - 255
-    imgs_A = (imgs_A + 1.0 ) * 127.5
-    imgs_B = (imgs_B + 1.0 ) * 127.5
-    fake_A = (fake_A + 1.0 ) * 127.5
-
-    gen_imgs = np.concatenate([imgs_B, fake_A, imgs_A])
-
-    # titles = ['Condition', 'Generated', 'Original']
-    for i in range(batch_size):
-        fn = ("images/%s/%d_%d.png" % (self.dataset_name, epoch, i))
-        cv2.imwrite(fn, gen_imgs[i])
-    print('samples generated!')
-
-def save_model_weights(self, model, filepath, overwrite=True):
-    model_file = Path(self.model_name)
-    if model_file.is_file():
-        model.save_weights(filepath, overwrite=True)
+def save_model_weights(model, filepath, overwrite=True):
+    cwd = os.getcwd()
+    filepath = filepath + '.h5'
+    model_path = os.path.join(cwd, 'saved_model', filepath)
+    if os.path.isfile(model_path):
+        model.save(model_path, overwrite=True)
     else:
-        model.save_weights(filepath, overwrite=False)
+        model.save_weights(model_path, overwrite=False)
 
 
 if __name__ == '__main__':
@@ -117,6 +98,6 @@ if __name__ == '__main__':
     mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'
     mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
-    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=1)
+    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=32)
 
 
