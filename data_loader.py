@@ -12,7 +12,7 @@ import copy
 import imgaug.augmenters as iaa
 import multiprocessing
 
-bop_renderer_path = '/home/stefan/workspace/bop_renderer/build'
+bop_renderer_path = '/home/stefan/bop_renderer/build'
 sys.path.append(bop_renderer_path)
 
 import bop_renderer
@@ -61,7 +61,9 @@ class DataLoader():
                            light_spec_shine)
         self.ren.add_object(self.obj_id, self.ply_path)
 
-        for key, value in yaml.load(open(self.mesh_info)).items():
+        stream = open(self.mesh_info, 'r')
+        for key, value in yaml.load(stream).items():
+        #for key, value in yaml.load(open(self.mesh_info)).items():
             if int(key) == self.obj_id + 1:
                 self.model_dia = value['diameter']
 
@@ -162,7 +164,7 @@ class DataLoader():
         # x_max = int(x_mean + max_side * 0.75)
         # y_min = int(y_mean - max_side * 0.75)
         # y_max = int(y_mean + max_side * 0.75)
-        pad_val = 100
+        pad_val = 150
         obsv_img = np.pad(obsv_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
         real_img = np.pad(real_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
         real_img = real_img.astype(np.uint8)
@@ -207,11 +209,11 @@ class DataLoader():
         img_obsv = obsv_img[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
         img_real = real_img[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
 
-        print(x_min, y_min, x_max, y_max)
-        print(rand_pose)
+        #print(x_min, y_min, x_max, y_max)
+        #print(rand_pose)
 
-        img_input = np.concatenate([img_obsv, img_rend], axis=1)
-        cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_input)
+        #img_input = np.concatenate([img_obsv, img_rend], axis=1)
+        #cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_input)
 
         img_rend = cv2.resize(img_rend, self.img_res)
         img_obsv = cv2.resize(img_obsv, self.img_res)
@@ -219,9 +221,13 @@ class DataLoader():
 
         return img_rend, img_obsv, img_real, anno_pose
 
+    def load_batch_parallel(self):
+        data_type = "train" if not self.is_testing else "val"
+
 
     def load_batch(self):
         data_type = "train" if not self.is_testing else "val"
+        for i in range(self.n_batches - 1):
 
         for i in range(self.n_batches-1):
             batch = self.image_ids[i * self.batch_size:(i+1) * self.batch_size]
@@ -250,11 +256,12 @@ class DataLoader():
                 #x_max = int(x_mean + max_side * 0.75)
                 #y_min = int(y_mean - max_side * 0.75)
                 #y_max = int(y_mean + max_side * 0.75)
-                pad_val = 100
-                obsv_img = np.pad(obsv_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
-                #real_img = np.pad(real_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
+                pad_val = 150
                 obsv_img = obsv_img.astype(np.uint8)
                 obsv_img = self.img_seq.augment_image(obsv_img)
+                obsv_img_pad = np.pad(obsv_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
+                #real_img = np.pad(real_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
+
 
                 # annotate
                 rand_pose = np.eye((4), dtype=np.float32)
@@ -288,10 +295,10 @@ class DataLoader():
                 y_max = int(obsv_center_y + dia_pixY * 0.75)
                 #print(x_min, y_min, x_max, y_max)
 
-                img_rend = self.render_img(obsv_pose, self.obj_id)
-                img_rend = np.pad(img_rend, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='constant')
+                img_rend_v = self.render_img(obsv_pose, self.obj_id)
+                img_rend = np.pad(img_rend_v, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='constant')
                 img_rend = img_rend[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
-                img_obsv = obsv_img[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
+                img_obsv = obsv_img_pad[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
                 #img_real = real_img[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
 
                 #print(x_min, y_min, x_max, y_max)
@@ -303,11 +310,13 @@ class DataLoader():
                 #img_input = np.concatenate([img_obsv, img_rend], axis=1)
                 #cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_input)
 
-                if img_rend.shape == 0:
-                    print(x_min, y_min, x_max, y_max)
-                    print(rand_pose)
-                    img_input = np.concatenate([img_obsv, img_rend], axis=1)
-                    cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_input)
+                #print(x_max, y_max)
+                #if x_min < -100 or y_min < -100 or x_max > 740 or y_max > 580:
+                #    print(x_min, y_min, x_max, y_max)
+                #    print(rand_pose)
+                    #img_input = np.concatenate([img_obsv, img_rend], axis=1)
+                #    img_viz = np.where(img_rend > 0, img_rend, img_obsv)
+                #    cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_viz)
 
                 img_rend = cv2.resize(img_rend, self.img_res)
                 img_obsv = cv2.resize(img_obsv, self.img_res)

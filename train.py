@@ -83,7 +83,7 @@ def save_model_weights(model, filepath, overwrite=True):
 
 
 if __name__ == '__main__':
-    #os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     PAUDA = default_model()
     dataset_path = '/home/stefan/data/train_data/linemod_PBR_BOP'
     mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'

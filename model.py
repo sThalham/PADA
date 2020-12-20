@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 
 import tensorflow as tf
+print(tf.__version__)
 
 from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Subtract, Add
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
@@ -9,6 +10,10 @@ from tensorflow.keras.layers import UpSampling2D, Conv2D
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.optimizers import Adam
 from keras.backend import l2_normalize
+
+#from tensorflow.keras.applications import imagenet_utils
+#import tensorflow.keras.applications.imagenet_utils
+#from tf2_resnets.models import ResNet18
 
 import keras_resnet
 import keras_resnet.models
@@ -48,9 +53,9 @@ class default_model():
         backbone = tf.keras.applications.DenseNet121(include_top=False, weights='imagenet', input_tensor=input, input_shape=self.img_shape, pooling=None, classes=1)
         layer_names = [138, 310, 426]
         backbone_outputs = [backbone.layers[idx].output for idx in layer_names]
-        print(backbone_outputs[0])
-        print(backbone_outputs[1])
-        print(backbone_outputs[2])
+
+        # tf2 ResNet
+        #backbone = ResNet18(input_tensor=input, input_shape=self.img_shape, weights='imagenet')
 
         #for i, layer in enumerate(backbone.layers):
         #    print(i, layer.name)
