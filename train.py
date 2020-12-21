@@ -4,7 +4,9 @@ import scipy
 import datetime
 import sys
 from data_loader import DataLoader
+from data_generator import DataGenerator
 from model import default_model
+from model_seq import default_model_seq
 import numpy as np
 import os
 import cv2
@@ -38,6 +40,19 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_
 
         save_model_weights(network.model, 'linemod_' + str(epoch))
     print("Training finished!")
+
+
+def train_with_generator(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_size=1, sample_interval=50):
+    # Parameters
+
+    # Generators
+    data_generator = DataGenerator('train', dataset_path, real_path, mesh_path, mesh_info, batch_size)
+
+    # Train model on dataset
+    network.fit_generator(generator=data_generator,
+                        use_multiprocessing=True,
+                        workers=3)
+
 
 
 def test(self, batch_size=1):
@@ -83,12 +98,12 @@ def save_model_weights(model, filepath, overwrite=True):
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     PAUDA = default_model()
     dataset_path = '/home/stefan/data/train_data/linemod_PBR_BOP'
     mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'
     mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
-    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=32)
+    train_with_generator(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=32)
 
 

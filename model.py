@@ -7,7 +7,8 @@ from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Con
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.activations import sigmoid
 from tensorflow.keras.layers import UpSampling2D, Conv2D
-from tensorflow.keras.models import Sequential, Model, load_model
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras import Sequential
 from tensorflow.keras.optimizers import Adam
 from keras.backend import l2_normalize
 
@@ -20,8 +21,9 @@ import keras_resnet
 import keras_resnet.models
 
 
-class default_model():
+class default_model(tf.keras.Model):
     def __init__(self, input_shape=(224, 224)):
+        super(default_model, self).__init__()
         # Input shape
         self.img_rows = input_shape[0]
         self.img_cols = input_shape[1]
@@ -45,7 +47,7 @@ class default_model():
         self.model = Model(inputs=[img_observed, img_rendered], outputs=delta)
         print(self.model.summary())
         #self.model.compile(loss=['mae', 'binary_crossentropy'], weights=[1, 1], optimizer=optimizer)
-        self.model.compile(loss='mse', optimizer=optimizer)
+        #self.model.compile(loss='mse', optimizer=optimizer)
 
     def resnet_no_top(self):
 
@@ -144,3 +146,8 @@ class default_model():
         #return Model(inputs=[obs, ren, real], outputs=[delta, da_out])
 
         return Model(inputs=[obs, ren], outputs=delta)
+
+    def call(self, inputs):
+        x = self.model(inputs)
+
+        return x

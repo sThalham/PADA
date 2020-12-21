@@ -21,7 +21,7 @@ import keras_resnet
 import keras_resnet.models
 
 
-class default_model():
+class default_model_seq():
     def __init__(self, input_shape=(224, 224)):
         # Input shape
         self.img_rows = input_shape[0]
@@ -42,11 +42,9 @@ class default_model():
         #delta, aux_task = estimator([img_observed, img_rendered, img_da])
         delta = estimator([img_observed, img_rendered])
 
-        #self.model = Model(inputs=[img_observed, img_rendered, img_da], outputs=[delta, aux_task])
-        self.model = Model(inputs=[img_observed, img_rendered], outputs=delta)
-        print(self.model.summary())
-        #self.model.compile(loss=['mae', 'binary_crossentropy'], weights=[1, 1], optimizer=optimizer)
-        self.model.compile(loss='mse', optimizer=optimizer)
+        model = tf.keras.Sequential()
+        model.add(delta)
+        model.compile(optimizer=optimizer, loss='mse')
 
     def resnet_no_top(self):
 
