@@ -89,6 +89,6 @@ if __name__ == '__main__':
     mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'
     mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
-    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=16)
+    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=32)
 
 

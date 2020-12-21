@@ -18,7 +18,7 @@ sys.path.append(bop_renderer_path)
 import bop_renderer
 
 
-class DataLoader():
+class DataLoader_V2():
     def __init__(self, dataset_path, real_path, mesh_path, mesh_info, batch_size, img_res=(224, 224), is_testing=False, workers=3):
         self.img_res = img_res
         self.dataset_path = dataset_path
@@ -50,7 +50,8 @@ class DataLoader():
         # init renderer
         self.ren = bop_renderer.Renderer()
         self.ren.init(640, 480)
-        light_pose = [np.random.rand() * 2000.0 - 1000.0, np.random.rand() * 2000.0 - 1000.0, 0.0]
+        #light_pose = [np.random.rand() * 2000.0 - 1000.0, np.random.rand() * 2000.0 - 1000.0, 0.0]
+        light_pose = [0.0, 0.0, 0.0]
         # light_color = [np.random.rand() * 0.1 + 0.9, np.random.rand() * 0.1 + 0.9, np.random.rand() * 0.1 + 0.9]
         light_color = [1.0, 1.0, 1.0]
         light_ambient_weight = np.random.rand()
@@ -99,6 +100,13 @@ class DataLoader():
         c = list(zip(self.Anns, self.image_ids))
         np.random.shuffle(c)
         self.Anns, self.image_ids = zip(*c)
+        self.n_batches = int(np.floor(len(self.image_ids) / self.batch_size))
+        self.img_batches = []
+        self.ann_batches = []
+        for i in range(self.n_batches - 1):
+            self.img_batches.append(self.image_ids[i * self.batch_size:(i + 1) * self.batch_size])
+            self.ann_batches.append(self.Anns[i * self.batch_size:(i + 1) * self.batch_size])
+        self.img_batch = []
 
         self.img_seq = iaa.Sequential([
         # blur
@@ -150,25 +158,19 @@ class DataLoader():
 
         return rgb_img
 
-    def annotate_batches(self, idx):
+    def annotate_batches_vanilla(self, idx):
 
-        img_path = os.path.join(self.dataset_path, 'images', self.data_type, self.obsv_path[idx])
+        img_path = os.path.join(self.dataset_path, 'images', self.data_type, self.img_batch[idx])
         img_path = img_path[:-4] + '_rgb.png'
-        obsv_img = cv2.imread(img_path).astype(np.float)
-        real_img = cv2.imread(self.real_batch[idx]).astype(np.float)
-        annotation = selfanno_batch[idx]
-        # y_mean = (annotation['bbox'][0] + annotation['bbox'][2] * 0.5)
-        # x_mean = (annotation['bbox'][1] + annotation['bbox'][3] * 0.5)
-        # max_side = np.max(annotation['bbox'][2:])
-        # x_min = int(x_mean - max_side * 0.75)
-        # x_max = int(x_mean + max_side * 0.75)
-        # y_min = int(y_mean - max_side * 0.75)
-        # y_max = int(y_mean + max_side * 0.75)
+        obsv_img = cv2.imread(img_path)
+
+        annotation = self.ann_batch[idx]
+
         pad_val = 150
         obsv_img = np.pad(obsv_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
-        real_img = np.pad(real_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
-        real_img = real_img.astype(np.uint8)
-        real_img = self.img_seq.augment_image(real_img)
+        obsv_img = obsv_img.astype(np.uint8)
+        obsv_img = self.img_seq.augment_image(obsv_img)
+        obsv_img = obsv_img.astype(np.float)
 
         # annotate
         rand_pose = np.eye((4), dtype=np.float32)
@@ -207,7 +209,6 @@ class DataLoader():
         img_rend = np.pad(img_rend, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
         img_rend = img_rend[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
         img_obsv = obsv_img[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
-        img_real = real_img[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
 
         #print(x_min, y_min, x_max, y_max)
         #print(rand_pose)
@@ -217,113 +218,16 @@ class DataLoader():
 
         img_rend = cv2.resize(img_rend, self.img_res)
         img_obsv = cv2.resize(img_obsv, self.img_res)
-        img_real = cv2.resize(img_real, self.img_res)
 
-        return img_rend, img_obsv, img_real, anno_pose
-
-    def load_batch_parallel(self):
-        data_type = "train" if not self.is_testing else "val"
-
+        return img_rend, img_obsv, None, anno_pose
 
     def load_batch(self):
-        data_type = "train" if not self.is_testing else "val"
-        for i in range(self.n_batches - 1):
-            batch = self.image_ids[i * self.batch_size:(i+1) * self.batch_size]
-            annos = self.Anns[i * self.batch_size:(i + 1) * self.batch_size]
-            batch_real = np.random.choice(self.real_path, self.batch_size)
-            #imgs_obsv, imgs_rend, imgs_real, poses = zip(*self.pool.map(self.annotate_batches, enumerate(zip(batch, batch_real, annos))))
+        self.data_type = "train" if not self.is_testing else "val"
+        for b_idx in range(self.n_batches - 1):
+            self.img_batch = self.img_batches[b_idx]
+            self.ann_batch = self.ann_batches[b_idx]
 
-            #self.obsv_batch = self.image_ids[i * self.batch_size:(i+1) * self.batch_size]
-            #self.anno_batch = self.Anns[i * self.batch_size:(i + 1) * self.batch_size]
-            #self.real_batch = np.random.choice(self.real_path, self.batch_size)
-
-            #imgs_obsv, imgs_rend, imgs_real, poses = zip(*self.pool.map(self.annotate_batches, range(len(self.obsv_batch))))
-
-
-            imgs_obsv, imgs_rend, imgs_real, poses = [], [], [], []
-            for idx, current_path in enumerate(batch):
-                img_path = os.path.join(self.dataset_path, 'images', data_type, current_path)
-                img_path = img_path[:-4] + '_rgb.png'
-                obsv_img = cv2.imread(img_path).astype(np.float)
-                #real_img = cv2.imread(batch_real[idx]).astype(np.float)
-                annotation = annos[idx]
-                #y_mean = (annotation['bbox'][0] + annotation['bbox'][2] * 0.5)
-                #x_mean = (annotation['bbox'][1] + annotation['bbox'][3] * 0.5)
-                #max_side = np.max(annotation['bbox'][2:])
-                #x_min = int(x_mean - max_side * 0.75)
-                #x_max = int(x_mean + max_side * 0.75)
-                #y_min = int(y_mean - max_side * 0.75)
-                #y_max = int(y_mean + max_side * 0.75)
-                pad_val = 150
-                obsv_img = obsv_img.astype(np.uint8)
-                obsv_img = self.img_seq.augment_image(obsv_img)
-                obsv_img_pad = np.pad(obsv_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
-                #real_img = np.pad(real_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
-
-
-                # annotate
-                rand_pose = np.eye((4), dtype=np.float32)
-                rand_pose[:3, :3] = tf3d.euler.euler2mat(np.random.normal(scale=np.pi*0.15), np.random.normal(scale=np.pi*0.15), np.random.normal(scale=np.pi*0.15))
-                rand_quat = tf3d.quaternions.mat2quat(rand_pose[:3, :3])
-                rand_pose[:3, 3] = [np.random.normal(scale=10), np.random.normal(scale=10), np.random.normal(scale=10)]
-                anno_pose = np.array(
-                    [rand_pose[0, 3], rand_pose[1, 3], rand_pose[2, 3], rand_quat[1], rand_quat[1], rand_quat[2],
-                     rand_quat[3]])
-                # normalize annotation
-                anno_pose[:3] = anno_pose[:3] * (1/10)
-                anno_pose = np.repeat(anno_pose[np.newaxis, :], repeats=25, axis=0)
-                poses.append(anno_pose.reshape((5, 5, 7)))
-
-                # render and sample crops
-                true_pose = np.eye((4), dtype=np.float32)
-                true_pose[:3, :3] = tf3d.quaternions.quat2mat(annotation['pose'][3:])
-                true_pose[:3, 3] = annotation['pose'][:3]
-                obsv_pose = np.eye((4), dtype=np.float32)
-                obsv_pose[:3, :3] = np.matmul(true_pose[:3, :3], rand_pose[:3, :3])
-                obsv_pose[:3, 3] = true_pose[:3, 3] + rand_pose[:3, 3]
-
-                obsv_center_y = ((obsv_pose[0, 3] * self.fx) / obsv_pose[2, 3]) + self.cx
-                obsv_center_x = ((obsv_pose[1, 3] * self.fy) / obsv_pose[2, 3]) + self.cy
-                dia_pixX = ((self.model_dia * self.fx) / obsv_pose[2, 3])
-                dia_pixY = ((self.model_dia * self.fy) / obsv_pose[2, 3])
-
-                x_min = int(obsv_center_x - dia_pixX * 0.75)
-                x_max = int(obsv_center_x + dia_pixX * 0.75)
-                y_min = int(obsv_center_y - dia_pixY * 0.75)
-                y_max = int(obsv_center_y + dia_pixY * 0.75)
-                #print(x_min, y_min, x_max, y_max)
-
-                img_rend_v = self.render_img(obsv_pose, self.obj_id)
-                img_rend = np.pad(img_rend_v, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='constant')
-                img_rend = img_rend[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
-                img_obsv = obsv_img_pad[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
-                #img_real = real_img[(x_min+pad_val):(x_max+pad_val), (y_min+pad_val):(y_max+pad_val), :]
-
-                #print(x_min, y_min, x_max, y_max)
-                #print(rand_pose)
-                #print(img_rend.shape)
-                #print(img_obsv.shape)
-                #print(img_real.shape)
-                #print(real_img.shape)
-                #img_input = np.concatenate([img_obsv, img_rend], axis=1)
-                #cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_input)
-
-                #print(x_max, y_max)
-                #if x_min < -100 or y_min < -100 or x_max > 740 or y_max > 580:
-                #    print(x_min, y_min, x_max, y_max)
-                #    print(rand_pose)
-                    #img_input = np.concatenate([img_obsv, img_rend], axis=1)
-                #    img_viz = np.where(img_rend > 0, img_rend, img_obsv)
-                #    cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_viz)
-
-                img_rend = cv2.resize(img_rend, self.img_res)
-                img_obsv = cv2.resize(img_obsv, self.img_res)
-                #img_real = cv2.resize(img_real, self.img_res)
-
-                imgs_obsv.append(img_obsv)
-                imgs_rend.append(img_rend)
-                #imgs_real.append(img_real)
-
+            imgs_obsv, imgs_rend, imgs_real, poses = self.pool.map(self.annotate_batches_vanilla, range(self.batch_size))
 
             imgs_obsv = np.array(imgs_obsv)/127.5 - 1.
             imgs_rend = np.array(imgs_rend)/127.5 - 1.

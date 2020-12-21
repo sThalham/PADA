@@ -13,7 +13,8 @@ from keras.backend import l2_normalize
 
 #from tensorflow.keras.applications import imagenet_utils
 #import tensorflow.keras.applications.imagenet_utils
-#from tf2_resnets.models import ResNet18
+from tf2_resnets.models import ResNet18
+#from tf2cv.model_provider import get_model as tf2cv_get_model
 
 import keras_resnet
 import keras_resnet.models
@@ -50,15 +51,26 @@ class default_model():
 
         input = Input(shape=self.img_shape)
         # DenseNet
-        backbone = tf.keras.applications.DenseNet121(include_top=False, weights='imagenet', input_tensor=input, input_shape=self.img_shape, pooling=None, classes=1)
-        layer_names = [138, 310, 426]
-        backbone_outputs = [backbone.layers[idx].output for idx in layer_names]
+        #backbone = tf.keras.applications.DenseNet121(include_top=False, weights='imagenet', input_tensor=input, input_shape=self.img_shape, pooling=None, classes=1)
+        #layer_names = [138, 310, 426]
+        #backbone_outputs = [backbone.layers[idx].output for idx in layer_names]
 
         # tf2 ResNet
-        #backbone = ResNet18(input_tensor=input, input_shape=self.img_shape, weights='imagenet')
+        backbone = ResNet18(input_tensor=input, input_shape=self.img_shape, weights='imagenet')
+        layer_names = [44, 64, 84]
+        backbone_outputs = [backbone.layers[idx].output for idx in layer_names]
+        #print(backbone_outputs)
+
+        # tf2cv
+        #backbone = tf2cv_get_model("resnet18", pretrained=True, data_format="channels_last")
+        #outputs = backbone(input)
+        #print(outputs)
+        #return Model(inputs=input, outputs=outputs)
 
         #for i, layer in enumerate(backbone.layers):
         #    print(i, layer.name)
+
+        #return Model(inputs=input, outputs=outputs)
         #resnet = keras_resnet.models.ResNet18(input, include_top=False, freeze_bn=True)
 
         #outputs = self.PFPN(resnet.outputs[1], resnet.outputs[2], resnet.outputs[3])
