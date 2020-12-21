@@ -93,7 +93,8 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.cx = image_ann[0]["cx"]
         self.cy = image_ann[0]["cy"]
 
-        c = list(zip(self.Anns, self.image_ids))
+        #self.image_idxs = range(len(self.image_ids))
+        c = list(zip(self.Anns, self.image_ids))#, self.image_idxs))
         np.random.shuffle(c)
         self.Anns, self.image_ids = zip(*c)
 
@@ -146,14 +147,10 @@ class DataGenerator(tf.keras.utils.Sequence):
         'Generate one batch of data'
         # Generate indexes of the batch
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+        list_IDs_temp = self.indexes[indexes]
+        inputs, outputs = self.__data_generation(list_IDs_temp)
 
-        # Find list of IDs
-        list_IDs_temp = [self.list_IDs[k] for k in indexes]
-
-        # Generate data
-        imgs_obsv, imgs_rend, poses = self.__data_generation(list_IDs_temp)
-
-        return imgs_obsv, imgs_rend, poses
+        return inputs, outputs
 
     def on_epoch_end(self):
         'Updates indexes after each epoch'
@@ -174,13 +171,15 @@ class DataGenerator(tf.keras.utils.Sequence):
     def __data_generation(self, list_IDs_temp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         # Initialization
-        batch = self.image_ids[list_IDs_temp]
-        annos = self.Anns[list_IDs_temp]
+        #batch = self.image_ids[list_IDs_temp]
+        #annos = self.Anns[list_IDs_temp]
+        batch = np.array(self.image_ids)[list_IDs_temp.astype(int)]
+        annos = np.array(self.Anns)[list_IDs_temp.astype(int)]
         #batch_real = np.random.choice(self.real_path, self.batch_size)
 
         imgs_obsv, imgs_rend, imgs_real, poses = [], [], [], []
         for idx, current_path in enumerate(batch):
-            img_path = os.path.join(self.dataset_path, 'images', data_type, current_path)
+            img_path = os.path.join(self.dataset_path, 'images', self.data_type, current_path)
             img_path = img_path[:-4] + '_rgb.png'
             obsv_img = cv2.imread(img_path).astype(np.float)
             # real_img = cv2.imread(batch_real[idx]).astype(np.float)
@@ -260,5 +259,5 @@ class DataGenerator(tf.keras.utils.Sequence):
         # imgs_real = np.array(imgs_real) / 127.5 - 1.
         poses = np.array(poses)
 
-        return imgs_obsv, imgs_rend, poses
+        return [imgs_obsv, imgs_rend], poses
 

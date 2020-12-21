@@ -12,6 +12,8 @@ import os
 import cv2
 from glob import glob
 
+from tensorflow.keras.optimizers import Adam
+
 
 def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_size=1, sample_interval=50):
 
@@ -47,6 +49,8 @@ def train_with_generator(network, dataset_path, real_path, mesh_path, mesh_info,
 
     # Generators
     data_generator = DataGenerator('train', dataset_path, real_path, mesh_path, mesh_info, batch_size)
+    optimizer = Adam(lr=1e-5, clipnorm=0.001)
+    network.compile(loss='mse', optimizer=optimizer)
 
     # Train model on dataset
     network.fit_generator(generator=data_generator,
@@ -98,7 +102,7 @@ def save_model_weights(model, filepath, overwrite=True):
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     PAUDA = default_model()
     dataset_path = '/home/stefan/data/train_data/linemod_PBR_BOP'
     mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'

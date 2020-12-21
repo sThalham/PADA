@@ -30,7 +30,7 @@ class default_model(tf.keras.Model):
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
-        optimizer = Adam(lr=1e-5, clipnorm=0.001)
+        #optimizer = Adam(lr=1e-5, clipnorm=0.001)
 
         img_observed = Input(shape=self.img_shape)
         img_rendered = Input(shape=self.img_shape)
@@ -149,5 +149,10 @@ class default_model(tf.keras.Model):
 
     def call(self, inputs):
         x = self.model(inputs)
+        return x
+
+    def predict(self):
+        pass
+
 
         return x
