@@ -13,6 +13,7 @@ import cv2
 from glob import glob
 
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import ModelCheckpoint
 
 
 def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_size=1, sample_interval=50):
@@ -52,43 +53,35 @@ def train_with_generator(network, dataset_path, real_path, mesh_path, mesh_info,
     optimizer = Adam(lr=1e-5, clipnorm=0.001)
     network.compile(loss='mse', optimizer=optimizer)
 
+    callbacks = []
+
+    # ensure directory created first; otherwise h5py will error after epoch.
+    snapshot_path = './models'
+    try:
+        os.makedirs(snapshot_path)
+    except OSError:
+        if not os.path.isdir(snapshot_path):
+            raise
+    checkpoint = ModelCheckpoint(
+        filepath=os.path.join(
+            snapshot_path, 'linemod_{{epoch:02d}}.h5'),
+        save_best_only=False,
+        save_freq=1,
+    )
+    #checkpoint = RedirectModel(checkpoint, model)
+    callbacks.append(checkpoint)
+
     # Train model on dataset
-    network.fit_generator(generator=data_generator,
-                        use_multiprocessing=True,
-                        workers=3)
+    network.fit(x=data_generator,
+                batch_size=batch_size,
+                          verbose=2,
+                          steps_per_epoch=data_generator.__len__(),
+                          epochs=epochs,
+                          callbacks=callbacks,
+                          use_multiprocessing=True,
+                          max_queue_size=10,
+                          workers=3)
 
-
-
-def test(self, batch_size=1):
-    files = glob('./datasets/%s/%s/*' % (self.dataset_name, "test"))
-    lenFolder = len("./datasets/" + self.dataset_name + "/test/")
-    amoFiles = len(files)
-    print("found ", amoFiles, " to process")
-
-    apro = 0
-    ppro = batch_size
-    while (ppro) < amoFiles:
-        if (ppro) >= amoFiles:
-            ppro = apro + (amoFiles - apro)
-
-        paths = files[apro:ppro]
-        imgs = self.data_loader.load_test_data(paths)
-        print("Test batch [%d:%d] of [%d] loaded" % (apro, ppro, amoFiles))
- 
-        fakes = self.generator.predict(imgs)
-        fakes = 127.5 * fakes + 127.5
-
-        for i in range(batch_size):
-            fn = paths[i]
-            fn = fn[lenFolder:]
-            fn = "./results/" + fn
-            print(fn)
-            img = scipy.misc.imresize(fakes[i], (480, 640))
-            cv2.imwrite(fn, img)
-        print("processed [%d:%d] of [%d]" % (apro, ppro, amoFiles))
-        apro = apro + batch_size
-        ppro = ppro + batch_size
-    print("generated images under /results")
 
 
 def save_model_weights(model, filepath, overwrite=True):
