@@ -68,7 +68,6 @@ def train_with_generator(network, dataset_path, real_path, mesh_path, mesh_info,
         save_best_only=False,
         save_freq=1,
     )
-    #checkpoint = RedirectModel(checkpoint, model)
     callbacks.append(checkpoint)
 
     # Train model on dataset
@@ -101,6 +100,6 @@ if __name__ == '__main__':
     mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'
     mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
-    train_with_generator(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=32)
+    train_with_generator(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=1)
 
 

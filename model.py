@@ -130,7 +130,7 @@ class default_model(tf.keras.Model):
         head_rot = Conv2D(head_features, kernel_size=3, strides=1, padding='same')(head_rot)
         head_rot = Conv2D(head_features, kernel_size=3, strides=1, padding='same')(head_rot)
         delta_rot = Conv2D(4, kernel_size=3)(head_rot)
-        print(delta_rot)
+
         #delta_rot = l2_normalize(delta_rot, axis=-1)
 
         delta = Concatenate(axis=-1)([delta_tra, delta_rot])
@@ -149,10 +149,11 @@ class default_model(tf.keras.Model):
 
     def call(self, inputs):
         x = self.model(inputs)
+        print(x.shape)
         return x
 
-    def predict(self):
-        pass
+    #def predict(self):
+    #    pass
 
 
-        return x
+    #    return x

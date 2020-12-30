@@ -223,7 +223,8 @@ class DataGenerator(tf.keras.utils.Sequence):
             y_max = int(obsv_center_y + dia_pixY * 0.75)
             # print(x_min, y_min, x_max, y_max)
 
-            img_rend_v = self.render_img(obsv_pose, self.obj_id)
+            #img_rend_v = self.render_img(obsv_pose, self.obj_id)
+            img_rend_v = np.zeros((640,480, 3), dtype=np.uint8)
             img_rend = np.pad(img_rend_v, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='constant')
             img_rend = img_rend[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
             img_obsv = obsv_img_pad[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
@@ -258,6 +259,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         imgs_rend = np.array(imgs_rend) / 127.5 - 1.
         # imgs_real = np.array(imgs_real) / 127.5 - 1.
         poses = np.array(poses)
+        print(poses.shape)
 
         return [imgs_obsv, imgs_rend], poses
 
