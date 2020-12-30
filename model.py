@@ -149,8 +149,8 @@ class default_model(tf.keras.Model):
 
     def call(self, inputs):
         x = self.model(inputs)
-        print(x.shape)
         return x
+
 
     #def predict(self):
     #    pass

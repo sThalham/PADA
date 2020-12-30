@@ -14,6 +14,7 @@ from glob import glob
 
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint
+import tensorflow as tf
 
 
 def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_size=1, sample_interval=50):
@@ -45,11 +46,11 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_
     print("Training finished!")
 
 
-def train_with_generator(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_size=1, sample_interval=50):
+def train_with_generator(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs, batch_size=1, sample_interval=50):
     # Parameters
 
     # Generators
-    data_generator = DataGenerator('train', dataset_path, real_path, mesh_path, mesh_info, batch_size)
+    data_generator = DataGenerator('train', dataset_path, real_path, mesh_path, mesh_info, object_id, batch_size)
     optimizer = Adam(lr=1e-5, clipnorm=0.001)
     network.compile(loss='mse', optimizer=optimizer)
 
@@ -64,7 +65,7 @@ def train_with_generator(network, dataset_path, real_path, mesh_path, mesh_info,
             raise
     checkpoint = ModelCheckpoint(
         filepath=os.path.join(
-            snapshot_path, 'linemod_{{epoch:02d}}.h5'),
+            snapshot_path, 'linemod_{oi}_{{epoch:02d}}.h5'.format(oi=object_id)),
         save_best_only=False,
         save_freq=1,
     )
@@ -73,13 +74,106 @@ def train_with_generator(network, dataset_path, real_path, mesh_path, mesh_info,
     # Train model on dataset
     network.fit(x=data_generator,
                 batch_size=batch_size,
-                          verbose=2,
-                          steps_per_epoch=data_generator.__len__(),
+                          verbose=1,
+                          steps_per_epoch=1,
+                          #steps_per_epoch=data_generator.__len__(),
+                          epochs=epochs,
+                          callbacks=callbacks,
+                          use_multiprocessing=False,
+                          max_queue_size=10)
+                          #workers=1)
+
+'''
+x_shape = (32, 32, 3)
+y_shape = ()  # A single item (not array).
+classes = 10
+
+def generator_fn(n_samples):
+    """Return a function that takes no arguments and returns a generator."""
+    def generator():
+        for i in range(n_samples):
+            # Synthesize an image and a class label.
+            x = np.random.random_sample(x_shape).astype(np.float32)
+            y = np.random.randint(0, classes, size=y_shape, dtype=np.int32)
+            yield x, y
+    return generator
+
+def augment(x, y):
+    return x * tf.random.normal(shape=x_shape), y
+
+samples = 10
+batch_size = 5
+epochs = 2
+
+# Create dataset.
+gen = generator_fn(n_samples=samples)
+dataset = tf.data.Dataset.from_generator(
+    generator=gen, 
+    output_types=(np.float32, np.int32), 
+    output_shapes=(x_shape, y_shape)
+)
+# Parallelize the augmentation.
+dataset = dataset.map(
+    augment, 
+    num_parallel_calls=tf.data.experimental.AUTOTUNE,
+    # Order does not matter.
+    deterministic=False
+)
+dataset = dataset.batch(batch_size, drop_remainder=True)
+# Prefetch some batches.
+dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+'''
+
+def train_with_data(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs, batch_size=1, sample_interval=50):
+    # Parameters
+
+    # Generators
+    data_generator = DataGenerator('train', dataset_path, real_path, mesh_path, mesh_info, object_id, batch_size)
+    # Create dataset.
+    x_shape = (2)
+    y_shape = (batch_size, 5, 5, 7)  # A single item (not array).
+    gen_fn = data_generator.call(batch_size)
+    dataset = tf.data.Dataset.from_generator(
+        generator=gen_fn,
+        output_types=(tuple, np.float32),
+        output_shapes=(x_shape, y_shape)
+    )
+    dataset = dataset.batch(batch_size, drop_remainder=True)
+    # Prefetch some batches.
+    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+
+    optimizer = Adam(lr=1e-5, clipnorm=0.001)
+    network.compile(loss='mse', optimizer=optimizer)
+
+    callbacks = []
+
+    # ensure directory created first; otherwise h5py will error after epoch.
+    snapshot_path = './models'
+    try:
+        os.makedirs(snapshot_path)
+    except OSError:
+        if not os.path.isdir(snapshot_path):
+            raise
+    checkpoint = ModelCheckpoint(
+        filepath=os.path.join(
+            snapshot_path, 'linemod_{oi}_{{epoch:02d}}.h5'.format(oi=object_id)),
+        save_best_only=False,
+        save_freq=1,
+    )
+    callbacks.append(checkpoint)
+
+    # Train model on dataset
+    network.fit(x=dataset,
+                batch_size=batch_size,
+                          verbose=1,
+                          steps_per_epoch=1,
+                          #steps_per_epoch=data_generator.__len__(),
                           epochs=epochs,
                           callbacks=callbacks,
                           use_multiprocessing=True,
-                          max_queue_size=10,
+                          max_queue_size=10)
                           workers=3)
+
 
 
 
@@ -100,6 +194,7 @@ if __name__ == '__main__':
     mesh_path = '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply'
     mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
-    train_with_generator(PAUDA, dataset_path, real_path, mesh_path, mesh_info, epochs=100, batch_size=1)
+    object_id = str(1)
+    train_with_generator(PAUDA, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs=100, batch_size=32)
 
 
