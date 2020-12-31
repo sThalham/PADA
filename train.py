@@ -4,7 +4,7 @@ import scipy
 import datetime
 import sys
 from data_loader import DataLoader
-from data_generator import DataGenerator
+from tf_data_generator import TFDataGenerator
 from model import default_model
 from model_seq import default_model_seq
 import numpy as np
@@ -128,16 +128,32 @@ def train_with_data(network, dataset_path, real_path, mesh_path, mesh_info, obje
     # Parameters
 
     # Generators
-    data_generator = DataGenerator('train', dataset_path, real_path, mesh_path, mesh_info, object_id, batch_size)
-    # Create dataset.
-    x_shape = (2)
-    y_shape = (batch_size, 5, 5, 7)  # A single item (not array).
-    gen_fn = data_generator.call(batch_size)
+    data_generator = TFDataGenerator('train', dataset_path, real_path, mesh_path, mesh_info, object_id, batch_size)
+
+    '''
+    # loading and calling
+    gen_fn = data_generator.generate_batch()
     dataset = tf.data.Dataset.from_generator(
         generator=gen_fn,
-        output_types=(tuple, np.float32),
-        output_shapes=(x_shape, y_shape)
+        output_types=((np.float64, np.float64), np.float64),
+        output_shapes=(([224, 224, 3], [224, 224, 3]), [5, 5, 7])
     )
+    '''
+    gen = data_generator.generate_batch()
+    dataset = tf.data.Dataset.from_generator(
+        generator=gen,
+        output_types=((np.float64, np.float64), np.float64),
+        output_shapes=(([224, 224, 3], [224, 224, 3]), [5, 5, 7])
+    )
+    # Parallelize the augmentation.
+    dataset = dataset.map(
+        data_generator.wrap_tf_function,
+        num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        # Order does not matter.
+        deterministic=False
+    )
+
+
     dataset = dataset.batch(batch_size, drop_remainder=True)
     # Prefetch some batches.
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
@@ -163,15 +179,14 @@ def train_with_data(network, dataset_path, real_path, mesh_path, mesh_info, obje
     callbacks.append(checkpoint)
 
     # Train model on dataset
-    network.fit(x=dataset,
+    network.fit(x=dataset.repeat(),
                 batch_size=batch_size,
                           verbose=1,
-                          steps_per_epoch=1,
-                          #steps_per_epoch=data_generator.__len__(),
+                          steps_per_epoch=data_generator.__len__(),
                           epochs=epochs,
                           callbacks=callbacks,
                           use_multiprocessing=True,
-                          max_queue_size=10)
+                          max_queue_size=10,
                           workers=3)
 
 
@@ -195,6 +210,6 @@ if __name__ == '__main__':
     mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
     object_id = str(1)
-    train_with_generator(PAUDA, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs=100, batch_size=32)
+    train_with_data(PAUDA, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs=100, batch_size=32)
 
 
