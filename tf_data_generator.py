@@ -243,8 +243,8 @@ class TFDataGenerator(tf.keras.utils.Sequence):
         #    img_viz = np.where(img_rend > 0, img_rend, img_obsv)
         #    cv2.imwrite('/home/stefan/PADA_viz/img_input.png', img_viz)
 
-        img_rend = cv2.resize(img_rend, self.img_res)
-        img_obsv = cv2.resize(img_obsv, self.img_res)
+        img_rend = cv2.resize(img_rend, self.img_res[:2])
+        img_obsv = cv2.resize(img_obsv, self.img_res[:2])
 
         img_obsv = np.array(img_obsv) / 127.5 - 1.
         img_rend = np.array(img_rend) / 127.5 - 1.
@@ -303,12 +303,14 @@ class TFDataGenerator(tf.keras.utils.Sequence):
                 y = np.zeros((self.img_res[0], self.img_res[1], 3), dtype=np.float64)
                 a = np.zeros((5, 5, 7), dtype=np.float64)
                 x[0, 0, 0] = idx
+                print(idx)
                 yield (x, y), a
         return generator
 
     def load_and_prepare_batch(self, x, a):
         idx = x[0][0, 0, 0]
 
+        print(idx)
         current_path = self.image_ids[idx]
         img_path = os.path.join(self.dataset_path, 'images', self.data_type, current_path)
         img_path = img_path[:-4] + '_rgb.png'
@@ -319,11 +321,11 @@ class TFDataGenerator(tf.keras.utils.Sequence):
         y = tf.convert_to_tensor(y, dtype=tf.float64)
         a = tf.convert_to_tensor(a, dtype=tf.float64)
 
-        return (x, y), a
+        return x, y, a
 
     def wrap_tf_function(self, x, a):
-        output = tf.py_function(func=self.load_and_prepare_batch, inp=[x, a], Tout=((tf.float64, tf.float64), tf.float64))
-        return output
+        outputs = tf.py_function(func=self.load_and_prepare_batch, inp=[x, a], Tout=(tf.float64, tf.float64, tf.float64))
+        return (outputs[0], outputs[1]), outputs[2]
 
 
 
