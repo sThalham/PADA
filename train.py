@@ -142,9 +142,10 @@ def train_with_data(network, dataset_path, real_path, mesh_path, mesh_info, obje
     gen = data_generator.generate_batch()
     dataset = tf.data.Dataset.from_generator(
         generator=gen,
-        output_types=((np.float64, np.float64), np.float64),
-        output_shapes=(([224, 224, 3], [224, 224, 3]), [5, 5, 7])
+        output_types=tf.dtypes.int64,
+        output_shapes=(1,),
     )
+    #print('autotune: ', tf.data.experimental.AUTOTUNE)
     # Parallelize the augmentation.
     dataset = dataset.map(
         data_generator.wrap_tf_function,
@@ -152,7 +153,6 @@ def train_with_data(network, dataset_path, real_path, mesh_path, mesh_info, obje
         # Order does not matter.
         deterministic=False
     )
-
 
     dataset = dataset.batch(batch_size, drop_remainder=True)
     # Prefetch some batches.
@@ -185,7 +185,7 @@ def train_with_data(network, dataset_path, real_path, mesh_path, mesh_info, obje
                           steps_per_epoch=data_generator.__len__(),
                           epochs=epochs,
                           callbacks=callbacks,
-                          use_multiprocessing=True,
+                          use_multiprocessing=False,
                           max_queue_size=10,
                           workers=3)
 

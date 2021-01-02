@@ -77,9 +77,10 @@ class TFDataGenerator(tf.keras.utils.Sequence):
                 template_name = '00000000000'
                 id = str(ann['image_id'])
                 # print(ann['id'])
-                name = template_name[:-len(id)] + id + '.png'
+                name = template_name[:-len(id)] + id + '_rgb.png'
+                img_path = os.path.join(self.dataset_path, 'images', self.data_type, name)
                 # print(name)
-                self.image_ids.append(name)
+                self.image_ids.append(img_path)
 
         self.fx = image_ann[0]["fx"]
         self.fy = image_ann[0]["fy"]
@@ -131,6 +132,7 @@ class TFDataGenerator(tf.keras.utils.Sequence):
 
         self.n_batches = int(np.floor(len(self.image_ids) / self.batch_size))
         self.on_epoch_end()
+        self.dataset_length = len(self.image_ids)
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -219,6 +221,7 @@ class TFDataGenerator(tf.keras.utils.Sequence):
         y_max = int(obsv_center_y + dia_pixY * 0.75)
         # print(x_min, y_min, x_max, y_max)
 
+        start_t = time.time()
         img_rend_v = self.render_img(obsv_pose, self.obj_id)
         # img_rend_v = np.zeros((640,480, 3), dtype=np.uint8)
         img_rend = np.pad(img_rend_v, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='constant')
@@ -281,41 +284,15 @@ class TFDataGenerator(tf.keras.utils.Sequence):
 
     def generate_batch(self):
         def generator():
-            for i in range(self.batch_size):
-                idx = np.random.choice(np.arange(len(self.image_ids)), 1, replace=False)
-                # Synthesize an image and a class label.
-                current_path = self.image_ids[idx[0]]
-                img_path = os.path.join(self.dataset_path, 'images', self.data_type, current_path)
-                img_path = img_path[:-4] + '_rgb.png'
-                img = cv2.imread(img_path).astype(np.float)
-                anno = self.Anns[idx[0]]
-                x,y,a = self.__data_sample(img, anno)
-                yield (x, y), a
+            for idx in range(self.dataset_length):
+                yield (idx,)
         return generator
 
-    def sample_batch(self):
-        def generator():
-            for i in range(self.batch_size):
-                idx = np.random.choice(np.arange(len(self.image_ids)), 1, replace=False)
-                # Synthesize an image and a class label.
-                # dirty hack
-                x = np.zeros((self.img_res[0], self.img_res[1], 3), dtype=np.float64)
-                y = np.zeros((self.img_res[0], self.img_res[1], 3), dtype=np.float64)
-                a = np.zeros((5, 5, 7), dtype=np.float64)
-                x[0, 0, 0] = idx
-                print(idx)
-                yield (x, y), a
-        return generator
+    def sample_data(self, idx):
 
-    def load_and_prepare_batch(self, x, a):
-        idx = x[0][0, 0, 0]
-
-        print(idx)
-        current_path = self.image_ids[idx]
-        img_path = os.path.join(self.dataset_path, 'images', self.data_type, current_path)
-        img_path = img_path[:-4] + '_rgb.png'
-        img = cv2.imread(img_path).astype(np.float)
-        anno = self.Anns[idx]
+        current_path = self.image_ids[idx.numpy()[0]]
+        img = cv2.imread(current_path)
+        anno = self.Anns[idx.numpy()[0]]
         x, y, a = self.__data_sample(img, anno)
         x = tf.convert_to_tensor(x, dtype=tf.float64)
         y = tf.convert_to_tensor(y, dtype=tf.float64)
@@ -323,9 +300,8 @@ class TFDataGenerator(tf.keras.utils.Sequence):
 
         return x, y, a
 
-    def wrap_tf_function(self, x, a):
-        outputs = tf.py_function(func=self.load_and_prepare_batch, inp=[x, a], Tout=(tf.float64, tf.float64, tf.float64))
+    def wrap_tf_function(self, x):
+        outputs = tf.py_function(func=self.sample_data, inp=[x], Tout=(tf.float64, tf.float64, tf.float64))
         return (outputs[0], outputs[1]), outputs[2]
-
 
 
