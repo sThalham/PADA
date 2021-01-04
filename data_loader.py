@@ -150,7 +150,7 @@ class Dataset():
         return self.img_seq
 
     def __image_shape__(self):
-        return img_res
+        return self.img_res
 
     def __model_diameter__(self):
         return self.model_dia
@@ -172,14 +172,14 @@ class Dataset():
         return batch_indices
 
 
-def load_data_sample(idx, img_list, anno_list, renderer, augmenter, intrinsics, obj_id, model_dia):
+def load_data_sample(idx, img_list, anno_list, augmenter, intrinsics, img_res, model_dia):
 
     img_path = img_list[idx]
     obsv_img = cv2.imread(img_path).astype(np.float)
     annotation = anno_list[idx]
-    obsv_img, rend_img, annotation = annotate_batches(obsv_img, annotation, renderer, augmenter, intrinsics, img_res, obj_id, model_dia)
+    obsv_img, annotation, extrinsics, bbox = annotate_batches(obsv_img, annotation, augmenter, intrinsics, img_res, model_dia)
 
-    return obsv_img, rend_img, annotation
+    return obsv_img, annotation, extrinsics, bbox
 
 
 def render_img(ren, intrinsics, extrinsics, obj_id):
@@ -207,7 +207,7 @@ def render_img(ren, intrinsics, extrinsics, obj_id):
     return rgb_img
 
 
-def annotate_batches(obsv_img, annotation, renderer, augmenter, intrinsics, img_res, obj_id, model_dia):
+def annotate_batches(obsv_img, annotation, augmenter, intrinsics, img_res, model_dia):
 
     # annotate
     rand_pose = np.eye((4), dtype=np.float32)
@@ -222,6 +222,7 @@ def annotate_batches(obsv_img, annotation, renderer, augmenter, intrinsics, img_
         # normalize annotation
     anno_pose[:3] = anno_pose[:3] * (1 / 30)
     anno_pose = np.repeat(anno_pose[np.newaxis, :], repeats=25, axis=0)
+    anno_pose = np.reshape(anno_pose, (5, 5, 7))
 
         # render and sample crops
     true_pose = np.eye((4), dtype=np.float32)
@@ -242,15 +243,32 @@ def annotate_batches(obsv_img, annotation, renderer, augmenter, intrinsics, img_
     y_max = int(obsv_center_y + dia_pixY * 0.75)
     # print(x_min, y_min, x_max, y_max)
 
-    img_rend = render_img(renderer, intrinsics, obsv_pose, obj_id)
-    img_rend = np.pad(img_rend, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
-    img_rend = img_rend[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
-    img_obsv = obsv_img[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
+    pad_val = 150
+    #img_rend = render_img(renderer, intrinsics, obsv_pose, obj_id)
+    #img_rend = np.pad(img_rend, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
+    #img_rend = img_rend[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
+    obsv_img_pad = np.pad(obsv_img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
+    img_obsv = obsv_img_pad[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
+    img_obsv = img_obsv.astype(np.uint8)
     img_obsv = augmenter.augment_image(img_obsv)
     #img_real = real_img[(x_min + pad_val):(x_max + pad_val), (y_min + pad_val):(y_max + pad_val), :]
+    #print('img: ', np.mean(img_obsv), img_res)
 
-    img_rend = cv2.resize(img_rend, img_res)
+    #cv2.imwrite('/home/stefan/PADA_viz/img_input.png', obsv_img)
+    #cv2.imwrite('/home/stefan/PADA_viz/img_crop.png', img_obsv)
+
+    #img_rend = cv2.resize(img_rend, img_res)
     img_obsv = cv2.resize(img_obsv, img_res)
 
-    return img_rend, img_obsv, anno_pose
+    return img_obsv, anno_pose, obsv_pose, [x_min, y_min, x_max, y_max]
 
+
+def render_crop(renderer, intrinsics, obsv_pose, obj_id, bbox, img_res):
+
+    pad_val = 150
+    img_rend = render_img(renderer, intrinsics, obsv_pose, int(obj_id))
+    img_rend = np.pad(img_rend, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
+    img_rend = img_rend[(bbox[0] + pad_val):(bbox[2] + pad_val), (bbox[1] + pad_val):(bbox[3] + pad_val), :]
+    img_rend = cv2.resize(img_rend, img_res)
+
+    return img_rend

@@ -3,7 +3,7 @@ from __future__ import print_function, division
 import scipy
 import datetime
 import sys
-from data_loader import load_data_sample, Dataset
+from data_loader import load_data_sample, Dataset, render_crop
 #from tf_data_generator import TFDataGenerator
 from model import default_model
 from model_seq import default_model_seq
@@ -19,6 +19,8 @@ import tensorflow as tf
 from multiprocessing import Pool
 from functools import partial
 import copy
+import time
+import threading
 
 bop_renderer_path = '/home/stefan/bop_renderer/build'
 sys.path.append(bop_renderer_path)
@@ -32,6 +34,8 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epo
     optimizer = Adam(lr=1e-5, clipnorm=0.001)
     network.compile(loss='mse', optimizer=optimizer)
 
+    multiproc = Pool(3)
+
     # init renderer
     bop_render = bop_renderer.Renderer()
     bop_render.init(640, 480)
@@ -40,31 +44,39 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epo
     for epoch in range(epochs):
         for batch_i in range(dalo.n_batches):
 
+            start_t = time.time()
             batch = dalo.__get_batch__(batch_i)
 
-            multiproc = Pool(6)
-
-            img_list = copy.deepcopy(dalo.__img_list__())
+            img_list = dalo.__img_list__()
             ann_list = copy.deepcopy(dalo.__anno_list__())
             ia = copy.deepcopy(dalo.__augmenter__())
             intri = copy.deepcopy(dalo.__get_intrinsics__())
             diameter = copy.deepcopy(dalo.__model_diameter__())
+            img_res = copy.deepcopy(dalo.__image_shape__())
 
-            parallel_loaded = multiproc.map(partial(load_data_sample, img_list=img_list, anno_list=ann_list, renderer=bop_render, augmenter=ia, intrisics=intri, obj_id=object_id, model_dia=diameter), batch)
+            parallel_loaded = multiproc.map(partial(load_data_sample, img_list=img_list, anno_list=ann_list, augmenter=ia, intrinsics=intri, img_res=img_res, model_dia=diameter), batch)
 
             imgs_obsv = []
             imgs_rend = []
             targets = []
+            extrinsics = []
+            bboxes = [] # temp for separate rendering
             for sample in parallel_loaded:
                 imgs_obsv.append(sample[0])
-                imgs_rend.append(sample[1])
-                targets.append(sample[2])
+                #imgs_rend.append(sample[1])
+                targets.append(sample[1])
+                extrinsics.append(sample[2])
+                bboxes.append(sample[3])
 
-            imgs_obsv = np.array(imgs_obsv) / 127.5 - 1.
-            imgs_rend = np.array(imgs_rend) / 127.5 - 1.
-            targets = np.array(targets)
+            for idx, pose in enumerate(extrinsics):
+                imgs_rend.append(render_crop(renderer=bop_render, intrinsics=intri, obsv_pose=pose, obj_id=object_id, bbox=bboxes[idx], img_res=img_res))
 
-            print(imgs_obsv.shape, imgs_rend.shape, targets.shape)
+            imgs_obsv = np.array(imgs_obsv, dtype=np.float32)
+            imgs_rend = np.array(imgs_rend, dtype=np.float32)
+            targets = np.array(targets, dtype=np.float32)
+            imgs_obsv = imgs_obsv / 127.5 - 1.
+            imgs_rend = imgs_rend / 127.5 - 1.
+            print('T data preparation: ', time.time()-start_t)
 
             network.fit(x=[imgs_obsv, imgs_rend],
                         y=targets,
