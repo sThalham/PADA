@@ -3,8 +3,8 @@ from __future__ import print_function, division
 import scipy
 import datetime
 import sys
-from data_loader import DataLoader
-from tf_data_generator import TFDataGenerator
+from data_loader import load_data_sample, Dataset
+#from tf_data_generator import TFDataGenerator
 from model import default_model
 from model_seq import default_model_seq
 import numpy as np
@@ -16,23 +16,63 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint
 import tensorflow as tf
 
+from multiprocessing import Pool
+from functools import partial
+import copy
 
-def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_size=1, sample_interval=50):
+bop_renderer_path = '/home/stefan/bop_renderer/build'
+sys.path.append(bop_renderer_path)
 
-    #model_file = Path(self.model_name)
-    #if model_file.is_file():
-    #    print("MODEL EXISTS... skip training. Please delete model file to retrain")
-    #    self.combined.load_weights(self.model_name)
-    #    return
+import bop_renderer
 
-    data_loader = DataLoader(dataset_path, real_path, mesh_path, mesh_info, batch_size)
+
+def train(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs, batch_size=1, sample_interval=50):
+
+    dalo = Dataset('train', dataset_path, object_id, real_path, mesh_path, mesh_info, batch_size)
+    optimizer = Adam(lr=1e-5, clipnorm=0.001)
+    network.compile(loss='mse', optimizer=optimizer)
+
+    # init renderer
+    bop_render = bop_renderer.Renderer()
+    bop_render.init(640, 480)
+    bop_render.add_object(int(object_id), mesh_path)
 
     for epoch in range(epochs):
-        #for batch_i, (obsv, rend, real, delta_gt, da_gt) in enumerate(data_loader.load_batch()):
-        for batch_i, (obsv, rend, delta) in enumerate(data_loader.load_batch()):
+        for batch_i in range(dalo.n_batches):
 
-            #g_loss = network.model.train_on_batch([obsv, rend, real], [delta_gt, da_gt])
-            g_loss = network.model.train_on_batch([obsv, rend], delta)
+            batch = dalo.__get_batch__(batch_i)
+
+            multiproc = Pool(6)
+
+            img_list = copy.deepcopy(dalo.__img_list__())
+            ann_list = copy.deepcopy(dalo.__anno_list__())
+            ia = copy.deepcopy(dalo.__augmenter__())
+            intri = copy.deepcopy(dalo.__get_intrinsics__())
+            diameter = copy.deepcopy(dalo.__model_diameter__())
+
+            parallel_loaded = multiproc.map(partial(load_data_sample, img_list=img_list, anno_list=ann_list, renderer=bop_render, augmenter=ia, intrisics=intri, obj_id=object_id, model_dia=diameter), batch)
+
+            imgs_obsv = []
+            imgs_rend = []
+            targets = []
+            for sample in parallel_loaded:
+                imgs_obsv.append(sample[0])
+                imgs_rend.append(sample[1])
+                targets.append(sample[2])
+
+            imgs_obsv = np.array(imgs_obsv) / 127.5 - 1.
+            imgs_rend = np.array(imgs_rend) / 127.5 - 1.
+            targets = np.array(targets)
+
+            print(imgs_obsv.shape, imgs_rend.shape, targets.shape)
+
+            network.fit(x=[imgs_obsv, imgs_rend],
+                        y=targets,
+                        batch_size=batch_size,
+                        verbose=1,
+                        steps_per_epoch=1,
+                        # steps_per_epoch=data_generator.__len__(),
+                        epochs=1)
 
             #elapsed_time = datetime.datetime.now() - start_time
             # Plot the progress
@@ -40,9 +80,16 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, epochs, batch_
             #                                                            batch_i, data_loader.n_batches,
             #                                                            g_loss[0] + g_loss[1],
             #                                                            g_loss[0], g_loss[1]))
-            print("Epoch %d/%d     Iteration: %d/%d Loss: %f" % (epoch, epochs, batch_i, data_loader.n_batches, g_loss))
+            #print("Epoch %d/%d     Iteration: %d/%d Loss: %f" % (epoch, epochs, batch_i, data_loader.n_batches, g_loss))
 
-        save_model_weights(network.model, 'linemod_' + str(epoch))
+        snapshot_path = './models'
+        try:
+            os.makedirs(snapshot_path)
+        except OSError:
+            if not os.path.isdir(snapshot_path):
+                raise
+
+        network.save(snapshot_path, 'linemod_{oi}_{{epoch:02d}}.h5'.format(oi=object_id))
     print("Training finished!")
 
 
@@ -210,6 +257,7 @@ if __name__ == '__main__':
     mesh_info = '/home/stefan/data/Meshes/lm_models/models/models_info.json'
     real_path = '/home/stefan/data/datasets/cocoval2017'
     object_id = str(1)
-    train_with_data(PAUDA, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs=100, batch_size=32)
+    #train_with_data(PAUDA, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs=100, batch_size=32)
+    train(PAUDA, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs=100, batch_size=32)
 
 
