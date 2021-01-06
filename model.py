@@ -4,21 +4,14 @@ import tensorflow as tf
 print(tf.__version__)
 
 from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Subtract, Add
-from keras.layers import BatchNormalization, Activation, ZeroPadding2D
-from keras.activations import sigmoid
 from tensorflow.keras.layers import UpSampling2D, Conv2D
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras import Sequential
 from tensorflow.keras.optimizers import Adam
-from keras.backend import l2_normalize
 
 #from tensorflow.keras.applications import imagenet_utils
 #import tensorflow.keras.applications.imagenet_utils
 from tf2_resnets.models import ResNet18
-#from tf2cv.model_provider import get_model as tf2cv_get_model
-
-import keras_resnet
-import keras_resnet.models
 
 
 class default_model(tf.keras.Model):

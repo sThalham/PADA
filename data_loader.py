@@ -177,16 +177,14 @@ def load_data_sample(idx, img_list, anno_list, augmenter, intrinsics, img_res, m
     img_path = img_list[idx]
     obsv_img = cv2.imread(img_path).astype(np.float)
     annotation = anno_list[idx]
-    obsv_img, annotation, extrinsics, bbox = annotate_batches(obsv_img, annotation, augmenter, intrinsics, img_res, model_dia)
+    obsv_img, annotation, R, t, bbox = annotate_batches(obsv_img, annotation, augmenter, intrinsics, img_res, model_dia)
 
-    return obsv_img, annotation, extrinsics, bbox
+    return obsv_img, annotation, R, t, bbox
 
 
-def render_img(ren, intrinsics, extrinsics, obj_id):
-    R = extrinsics[:3, :3]
-    t = extrinsics[:3, 3]  # * 0.001
-    R_list = R.flatten().tolist()
-    t_list = t.flatten().tolist()
+def render_img(rot, tra, ren, intrinsics, obj_id):
+    R_list = rot
+    t_list = tra
 
     light_pose = [np.random.rand() * 2000.0 - 1000.0, np.random.rand() * 2000.0 - 1000.0, 0.0]
     # light_color = [np.random.rand() * 0.1 + 0.9, np.random.rand() * 0.1 + 0.9, np.random.rand() * 0.1 + 0.9]
@@ -231,6 +229,10 @@ def annotate_batches(obsv_img, annotation, augmenter, intrinsics, img_res, model
     obsv_pose = np.eye((4), dtype=np.float32)
     obsv_pose[:3, :3] = np.matmul(true_pose[:3, :3], rand_pose[:3, :3])
     obsv_pose[:3, 3] = true_pose[:3, 3] + rand_pose[:3, 3]
+    ren_R = obsv_pose[:3, :3]
+    ren_t = obsv_pose[:3, 3]  # * 0.001
+    R_list = ren_R.flatten().tolist()
+    t_list = ren_t.flatten().tolist()
 
     obsv_center_y = ((obsv_pose[0, 3] * intrinsics[0]) / obsv_pose[2, 3]) + intrinsics[2]
     obsv_center_x = ((obsv_pose[1, 3] * intrinsics[1]) / obsv_pose[2, 3]) + intrinsics[3]
@@ -260,13 +262,15 @@ def annotate_batches(obsv_img, annotation, augmenter, intrinsics, img_res, model
     #img_rend = cv2.resize(img_rend, img_res)
     img_obsv = cv2.resize(img_obsv, img_res)
 
-    return img_obsv, anno_pose, obsv_pose, [x_min, y_min, x_max, y_max]
+    return img_obsv, anno_pose, R_list, t_list, [x_min, y_min, x_max, y_max]
 
 
-def render_crop(renderer, intrinsics, obsv_pose, obj_id, bbox, img_res):
+def render_crop(triple_list, renderer, intrinsics, obj_id, img_res):
+
+    rot, tra, bbox = triple_list
 
     pad_val = 150
-    img_rend = render_img(renderer, intrinsics, obsv_pose, int(obj_id))
+    img_rend = render_img(rot, tra, renderer, intrinsics, int(obj_id))
     img_rend = np.pad(img_rend, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
     img_rend = img_rend[(bbox[0] + pad_val):(bbox[2] + pad_val), (bbox[1] + pad_val):(bbox[3] + pad_val), :]
     img_rend = cv2.resize(img_rend, img_res)

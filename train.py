@@ -3,7 +3,7 @@ from __future__ import print_function, division
 import scipy
 import datetime
 import sys
-from data_loader import load_data_sample, Dataset, render_crop
+from data_loader import load_data_sample, Dataset, render_crop, render_img
 #from tf_data_generator import TFDataGenerator
 from model import default_model
 from model_seq import default_model_seq
@@ -17,16 +17,20 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 import tensorflow as tf
 
 from multiprocessing import Pool
+from pathos.pools import ProcessPool
 from functools import partial
 import copy
 import time
-import threading
 
 bop_renderer_path = '/home/stefan/bop_renderer/build'
 sys.path.append(bop_renderer_path)
 
 import bop_renderer
 
+
+#def render_top_level(ren, pose, intrinsics, obj_id):
+#    ren.render_object(obj_id, pose[0], pose[1], intrinsics[0], intrinsics[1], intrinsics[2], intrinsics[3])
+#    return ren.get_color_image(obj_id)
 
 def train(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epochs, batch_size=1, sample_interval=50):
 
@@ -35,11 +39,16 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epo
     network.compile(loss='mse', optimizer=optimizer)
 
     multiproc = Pool(3)
+    pathosPool = ProcessPool(nodes=3)
 
     # init renderer
     bop_render = bop_renderer.Renderer()
     bop_render.init(640, 480)
     bop_render.add_object(int(object_id), mesh_path)
+
+    def render_top_level(pose, intrinsics, obj_id):
+        bop_render.render_object(obj_id, pose[0], pose[1], intrinsics[0], intrinsics[1], intrinsics[2], intrinsics[3])
+        return bop_render.get_color_image(obj_id)
 
     for epoch in range(epochs):
         for batch_i in range(dalo.n_batches):
@@ -59,17 +68,64 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epo
             imgs_obsv = []
             imgs_rend = []
             targets = []
-            extrinsics = []
+            ren_Rot = []
+            ren_Tra = []
             bboxes = [] # temp for separate rendering
             for sample in parallel_loaded:
                 imgs_obsv.append(sample[0])
                 #imgs_rend.append(sample[1])
                 targets.append(sample[1])
-                extrinsics.append(sample[2])
-                bboxes.append(sample[3])
+                ren_Rot.append(sample[2])
+                ren_Tra.append(sample[3])
+                bboxes.append(sample[4])
 
-            for idx, pose in enumerate(extrinsics):
-                imgs_rend.append(render_crop(renderer=bop_render, intrinsics=intri, obsv_pose=pose, obj_id=object_id, bbox=bboxes[idx], img_res=img_res))
+            # looping over render
+            #for idx, pose in enumerate(extrinsics):
+            #    imgs_rend.append(render_crop(obsv_pose=pose, bbox=bboxes[idx], renderer=bop_render, intrinsics=intri, obj_id=object_id,, img_res=img_res))
+
+            # multiproc render and cropping
+            #triple_list = []
+            #for idx, rot in enumerate(ren_Rot):
+            #   triple_list.append([rot, ren_Tra[idx], bboxes[idx]])
+            #parallel_rendered = multiproc.map(partial(render_crop, renderer=bop_render, intrinsics=intri, obj_id=object_id, img_res=img_res), triple_list)
+
+            '''
+            # multiproc only rendering
+            double_list = []
+            for idx, rot in enumerate(ren_Rot):
+                double_list.append([rot, ren_Tra[idx]])
+
+            light_pose = [np.random.rand() * 2000.0 - 1000.0, np.random.rand() * 2000.0 - 1000.0, 0.0]
+            # light_color = [np.random.rand() * 0.1 + 0.9, np.random.rand() * 0.1 + 0.9, np.random.rand() * 0.1 + 0.9]
+            light_color = [1.0, 1.0, 1.0]
+            light_ambient_weight = np.random.rand()
+            light_diffuse_weight = 0.75 + np.random.rand() * 0.25
+            light_spec_weight = 0.25 + np.random.rand() * 0.25
+            light_spec_shine = np.random.rand() * 3.0
+
+            # time negligible
+            bop_render.set_light(light_pose, light_color, light_ambient_weight, light_diffuse_weight, light_spec_weight,
+                          light_spec_shine)
+
+            # render + get < 23 ms i5-6600k
+            #bop_renderer.render_object(obj_id, R_list, t_list, intri[0], intri[1], intri[2], intri[3])
+            parallel_rendered = multiproc.map(partial(render_top_level, ren=bop_render, intrinsics=intri, obj_id=object_id), double_list)
+            '''
+
+            # multiprocessing with pathos
+            id_list = []
+            intri_list = []
+            for idx in range(batch_size):
+                id_list.append(object_id)
+                intri_list.append(intri)
+            results = pathosPool.map(render_top_level, ren_Rot, ren_Tra, intri_list, id_list)
+
+            # try with async
+            pool = multiprocessing.Pool(2)
+            res = pool.apply_async(call_reader, args=(myReader,))
+            print
+            res.get()
+
 
             imgs_obsv = np.array(imgs_obsv, dtype=np.float32)
             imgs_rend = np.array(imgs_rend, dtype=np.float32)
