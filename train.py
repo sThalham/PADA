@@ -3,7 +3,7 @@ from __future__ import print_function, division
 import scipy
 import datetime
 import sys
-from data_loader import load_data_sample, Dataset, render_crop, render_img
+from data_loader import load_data_sample, Dataset, crop_rendering
 #from tf_data_generator import TFDataGenerator
 from model import default_model
 from model_seq import default_model_seq
@@ -17,7 +17,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 import tensorflow as tf
 
 from multiprocessing import Pool
-from pathos.pools import ProcessPool
+import multiprocessing
 from functools import partial
 import copy
 import time
@@ -26,6 +26,21 @@ bop_renderer_path = '/home/stefan/bop_renderer/build'
 sys.path.append(bop_renderer_path)
 
 import bop_renderer
+
+bop_render = bop_renderer.Renderer()
+bop_render.init(640, 480)
+bop_render.add_object(int(1), '/home/stefan/data/Meshes/lm_models/models/obj_000002.ply')
+
+
+def render_top_level(lists):
+    bop_render.render_object(lists[3], lists[0], lists[1], lists[2][0], lists[2][1], lists[2][2], lists[2][3])
+    print('rendering done')
+    return bop_render.get_color_image(lists[3])
+
+
+def get_result(result):
+    global results
+    results.append(result)
 
 
 #def render_top_level(ren, pose, intrinsics, obj_id):
@@ -38,17 +53,7 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epo
     optimizer = Adam(lr=1e-5, clipnorm=0.001)
     network.compile(loss='mse', optimizer=optimizer)
 
-    multiproc = Pool(3)
-    pathosPool = ProcessPool(nodes=3)
-
-    # init renderer
-    bop_render = bop_renderer.Renderer()
-    bop_render.init(640, 480)
-    bop_render.add_object(int(object_id), mesh_path)
-
-    def render_top_level(pose, intrinsics, obj_id):
-        bop_render.render_object(obj_id, pose[0], pose[1], intrinsics[0], intrinsics[1], intrinsics[2], intrinsics[3])
-        return bop_render.get_color_image(obj_id)
+    multiproc = Pool(1)
 
     for epoch in range(epochs):
         for batch_i in range(dalo.n_batches):
@@ -112,23 +117,23 @@ def train(network, dataset_path, real_path, mesh_path, mesh_info, object_id, epo
             parallel_rendered = multiproc.map(partial(render_top_level, ren=bop_render, intrinsics=intri, obj_id=object_id), double_list)
             '''
 
-            # multiprocessing with pathos
-            id_list = []
-            intri_list = []
-            for idx in range(batch_size):
-                id_list.append(object_id)
-                intri_list.append(intri)
-            results = pathosPool.map(render_top_level, ren_Rot, ren_Tra, intri_list, id_list)
+            quat_list = []
+            img_sizes = []
 
-            # try with async
-            pool = multiprocessing.Pool(2)
-            res = pool.apply_async(call_reader, args=(myReader,))
-            print
-            res.get()
+            for idx, rot in enumerate(ren_Rot):
+                quat_list.append([rot, ren_Tra[idx], intri, int(object_id)])
+                img_sizes.append(img_res)
 
+            print('start rendering')
+            full_renderings = multiproc.map(render_top_level, quat_list)
+            print('rendering done')
+
+            for img in full_renderings:
+                print(img.shape)
+            parallel_cropping = multiproc.map(partial(crop_rendering, bbox=bboxes, img_res=img_res), full_renderings)
 
             imgs_obsv = np.array(imgs_obsv, dtype=np.float32)
-            imgs_rend = np.array(imgs_rend, dtype=np.float32)
+            imgs_rend = np.array(parallel_cropping, dtype=np.float32)
             targets = np.array(targets, dtype=np.float32)
             imgs_obsv = imgs_obsv / 127.5 - 1.
             imgs_rend = imgs_rend / 127.5 - 1.

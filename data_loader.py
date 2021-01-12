@@ -265,13 +265,10 @@ def annotate_batches(obsv_img, annotation, augmenter, intrinsics, img_res, model
     return img_obsv, anno_pose, R_list, t_list, [x_min, y_min, x_max, y_max]
 
 
-def render_crop(triple_list, renderer, intrinsics, obj_id, img_res):
-
-    rot, tra, bbox = triple_list
+def crop_rendering(img, bbox, img_res):
 
     pad_val = 150
-    img_rend = render_img(rot, tra, renderer, intrinsics, int(obj_id))
-    img_rend = np.pad(img_rend, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
+    img_rend = np.pad(img, ((pad_val, pad_val), (pad_val, pad_val), (0, 0)), mode='edge')
     img_rend = img_rend[(bbox[0] + pad_val):(bbox[2] + pad_val), (bbox[1] + pad_val):(bbox[3] + pad_val), :]
     img_rend = cv2.resize(img_rend, img_res)
 
